@@ -1,3 +1,26 @@
+# Project Overview
+
+## Understanding the Codebase
+
+Before making changes, go through the project files and understand the purpose of each component.
+
+### Things to Review
+
+- [ ] Understand the project folder structure
+- [ ] Read and understand each source file
+- [ ] Identify the purpose of each module/component
+- [ ] Understand how files are connected with each other
+- [ ] Review the configuration files
+- [ ] Understand the data flow and application workflow
+- [ ] Learn how the project is built and deployed
+- [ ] Document important findings and notes
+
+## Notes
+
+Take time to understand the existing code before adding new features or modifying functionality.
+
+---
+
 # University ERP - Complete Project Guide
 
 ## 🏗️ Project Architecture
