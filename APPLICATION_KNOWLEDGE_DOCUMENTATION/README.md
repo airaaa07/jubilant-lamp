@@ -21,8 +21,11 @@ APPLICATION_KNOWLEDGE_DOCUMENTATION/
 ├── 07_INCOMPLETE_MISSING_AND_LIMITATION_AUDIT.md # Audit of Incomplete Flows, Stubs & System Limitations
 ├── 08_UI_UX_DESIGN_SYSTEM_AND_SCREEN_CATALOG.md # Master UI/UX Design System Tokens & Visual Screen Wireframes
 ├── 09_END_TO_END_WORKFLOW_ARCHITECTURE_CATALOG.md # Master End-to-End Technical Workflow Architecture Catalog
+├── 10_COMPLETE_END_TO_END_ACTION_PROCESS_MANUAL.md # Master Execution Manual for Every Single System Action
+├── 11_COMPLETE_APPLICATION_MASTER_ROADMAP.md    # 5-Step Mastery Roadmap, Local Runbook & Core Source Map
 ├── DESIGNS/                                     # 8 Separated Domain Screen Design Specification Files
-└── WORKFLOW_ARCHITECTURE_DESIGNS/               # 8 Separated Technical Workflow Architecture Design Files
+├── WORKFLOW_ARCHITECTURE_DESIGNS/               # 9 Separated Technical Workflow Architecture Design Files
+└── END_TO_END_ACTION_PROCESSES/                # 8 Separated Granular Action Lifecycle Manual Files
 ```
 
 ---
