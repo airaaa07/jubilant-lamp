@@ -2,10 +2,14 @@
 
 ## Documentation
 
-For official Frappe Framework documentation and Demo Apps, refer to:
+For official Frappe Framework documentation and demo applications, refer to the following resources:
 
-[Frappe Framework Documentation](https://docs.frappe.io/framework/)
-[Frappe Framework Demo Apps](https://buildwithhussain.com/)
+* **Frappe Framework Documentation:**
+  [https://docs.frappe.io/framework/](https://docs.frappe.io/framework)
+
+* **Frappe Framework Demo Apps:**
+  [https://buildwithhussain.com/](https://buildwithhussain.com)
+
 
 ---
 
