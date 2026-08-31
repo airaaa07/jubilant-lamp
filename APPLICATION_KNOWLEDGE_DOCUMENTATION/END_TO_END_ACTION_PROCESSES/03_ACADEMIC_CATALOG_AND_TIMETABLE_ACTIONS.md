@@ -1,64 +1,75 @@
-# Action Lifecycle Manual: Academic Catalog & Timetable Engine
+# Action Lifecycle Manual: Academic Catalog, Curriculum & Timetable
 
-## Action 3.1: Defining Versioned StreamLabel & SubjectLabel Snapshots
+## Action 3.1: Immutable Stream Label & Subject Label Rule Definition
 
 ### 1. User Action & Frontend Trigger
-- **User Role**: University Admin (`role: UnivAdmin` / `SuperAdmin`)
-- **Screen**: `MasterDataPage.tsx` (Version Rules Tab)
-- **User Input**: Program Choice (B.Tech CS), Version Name (`CS_CURRICULUM_RULES_2024_V1`), Total Graduation Credits (`160`), Core Credits (`120`), Elective Pool Credits (`40`), Min Passing Grade (`D`).
-- **Trigger**: Click **Freeze & Publish Immutable Stream Rule Snapshot**.
+- **User Role**: Dean / UnivAdmin / Academic Head
+- **Screen**: `MasterDataPage.tsx` -> `StreamLabelDetailModal.tsx`
+- **Input**: Programme ID, Version Identifier (e.g. `BTECH_CS_2026_V1`), Total Credits (`160`), Core Credits (`120`), Elective Credits (`40`), Min CGPA (`2.0`), Subject Credit Rules list.
+- **Trigger**: Click **Freeze & Publish Rule** button.
 
-### 2. Frontend State & Payload Construction
-- Sends HTTP POST:
-  ```json
+### 2. Frontend Payload Construction
+- ```json
   {
-    "programId": "prog-cs-01",
-    "labelName": "CS_CURRICULUM_RULES_2024_V1",
+    "programmeId": "prog-uuid-101",
+    "name": "B.Tech CSE 2026 Regulations",
+    "version": "V1",
     "totalCredits": 160,
     "coreCredits": 120,
     "electiveCredits": 40,
-    "minGpa": 2.0,
+    "minCgpa": 2.0,
+    "isFrozen": true,
     "subjectRules": [
-      { "subjectId": "sub-cs101", "isRequired": true, "credits": 4 },
-      { "subjectId": "sub-cs102", "isRequired": true, "credits": 4 }
+      { "subjectId": "subj-101", "credits": 4, "isMandatory": true, "termNumber": 1 },
+      { "subjectId": "subj-102", "credits": 3, "isMandatory": true, "termNumber": 1 }
     ]
   }
   ```
 
-### 3. Backend Execution (`StreamLabelService.createSnapshot`)
-- `POST /api/v1/academic/stream-labels`
-- Checks if existing stream label rules exist for program; assigns version increment (`version = 1`).
-- Locks record as immutable (`is_active = true, is_frozen = true`).
+### 3. API Routing & Guard Pipeline
+- **Endpoint**: `POST /api/master-data/stream-labels`
+- **Guards**: `JwtAuthGuard`, `RolesGuard('UnivAdmin', 'SuperAdmin', 'Dean')`.
 
-### 4. Database Persistence
-- `INSERT INTO stream_labels (id, program_id, version, label_name, rules_json, is_frozen = true)`
-- `INSERT INTO subject_labels (stream_label_id, subject_id, credit_weight, requirement_type)`
-
-### 5. Impact & Outcome
-- Future student enrollments for Batch 2024-2028 are bound to `CS_CURRICULUM_RULES_2024_V1`.
-- Any subsequent program rule changes will create `CS_CURRICULUM_RULES_2026_V2` without altering ongoing student credit requirements.
+### 4. Backend Processing & Immutability Enforcement
+- Checks if existing batch has already completed terms under this label.
+- If `isFrozen === true`, creates immutable rule record.
+- Any future modifications require creating a new version (`V2`) rather than mutating existing frozen rules.
 
 ---
 
-## Action 3.2: Automated Timetable Solver Execution
+## Action 3.2: Automated Timetable Generation & Constraint Solving
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Institute Administrator (`role: InstAdmin`)
+### 1. User Action
 - **Screen**: `TimetablePage.tsx`
-- **User Input**: Academic Term (Term 3 Fall 2024), Target Institute, Working Days (Mon-Fri), Daily Periods (8 periods/day).
-- **Trigger**: Click **Run Timetable Constraint Solver**.
+- **Trigger**: Click **Generate Timetable Schedule**.
 
-### 2. Backend Engine Logic (`TimetableService.generateTimetable`)
-- `POST /api/v1/timetable/generate`
-- Queries all active subjects, section allocations, assigned faculty (`staff_subject_assignments`), and institute classroom capacities (`institute_resources`).
-- Executes constraint solving loop:
-  - Resolves faculty double-booking conflicts.
-  - Resolves room occupancy capacity limits.
-  - Balances daily teaching hours per instructor.
+### 2. API Routing
+- `POST /api/timetable/generate` with `{ batchTermId, roomIds, facultyIds, maxHoursPerDay: 6 }`.
 
-### 3. Database Mutations
-- `INSERT INTO schedule_runs (institute_id, term_id, status = 'COMPLETED', conflict_count = 0)`
-- `INSERT INTO timetable_slots (schedule_run_id, subject_id, section_id, faculty_user_id, resource_id, day_of_week, period_index)`
+### 3. Solver Execution Logic
+- Constraint solver evaluates:
+  - No faculty double-booking across sections.
+  - Classroom capacity >= section enrollment count.
+  - Lab sessions allocated to designated lab resources in contiguous 2-3 hour blocks.
+  - Faculty daily teaching load capped at policy maximum.
+- Generates weekly slot matrix in `timetable_slots`.
 
-### 4. Outcome
-- Grid matrix rendered on `TimetablePage.tsx`. Instructors and students see published schedules on their dashboards.
+### 4. Conflict Highlight & Manual Adjustment
+- Frontend renders 7-day interactive grid.
+- Faculty or room conflicts highlight with red pulse ring (`ring-2 ring-rose-500`).
+- Drag-and-drop slot repositioning invokes `PATCH /api/timetable/slots/:id`.
+
+---
+
+## Action 3.3: Attendance Marking & Defaulter Generation
+
+### 1. Faculty Attendance Session
+- **Screen**: `AttendancePage.tsx`
+- Faculty selects subject, date, period slot.
+- Toggle buttons for each student: `PRESENT` (green), `ABSENT` (red), `EXCUSED` (yellow).
+- Clicks **Submit Attendance** -> `POST /api/attendance`.
+
+### 2. Analytics & Low Attendance Detection
+- Calculates cumulative percentage per student per subject: `(attended / total) * 100`.
+- If attendance < 75% policy threshold, student profile flagged as `ATTENDANCE_DEFAULTER`.
+- Triggers notification to student and parent portal.

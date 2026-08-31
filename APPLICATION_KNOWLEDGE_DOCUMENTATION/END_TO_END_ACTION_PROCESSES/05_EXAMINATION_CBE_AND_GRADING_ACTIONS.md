@@ -1,63 +1,64 @@
-# Action Lifecycle Manual: Examinations, CBE Engine & AI Proctoring
+# Action Lifecycle Manual: Examinations, CBE & Grading Pipeline
 
-## Action 5.1: Student Online CBE Exam Navigation & Answer Recording
+## Action 5.1: Exam Paper Creation, Scheduling & Admit Card Release
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Student (`role: Student`)
-- **Screen**: `ExamTakePage.tsx`
-- **User Input**: Enters Exam Code (`EXAM-CS301-FINAL`), completes webcam environment check, selects radio option B for Question 14, clicks **Next Question**.
+### 1. Paper Definition & Question Assembly
+- **Role**: Examination Controller / InstAdmin
+- **Screen**: `ExaminationsPage.tsx`
+- Input: Batch Term, Subject, Exam Type (Mid-Term, Final, Internal), Duration (120 mins), Total Marks (100).
+- `POST /api/examination` -> paper created in `exam_papers`.
+- Adds questions from question bank (`GET /api/question-bank`) or uploads new questions.
 
-### 2. Frontend State & Telemetry Capture
-- Web app enters full-screen browser mode via HTML5 Fullscreen API.
-- Tab switch listener tracks `window.onblur` and `document.onvisibilitychange`.
-- Sends HTTP POST payload:
-  ```json
-  {
-    "attemptId": "attempt-9901-uuid",
-    "questionId": "q-14-uuid",
-    "selectedOptionId": "opt-b-uuid",
-    "timeSpentSeconds": 45
-  }
-  ```
+### 2. Schedule Validation & Lock
+- Sets exam date, start time, end time, and classroom venues.
+- Clicks **Validate Schedule** -> `POST /api/examination/schedule/validate` (checks classroom capacity and student conflict).
+- Clicks **Lock Schedule** -> `POST /api/examination/schedule/lock`.
 
-### 3. API Routing & Guard Pipeline
-- `POST /api/v1/examination/cbe/save-answer`
-- `GlobalJwtAuthGuard` verifies token. `ExaminationService` verifies exam session is active and not expired.
-
-### 4. Database Mutations
-- `UPSERT INTO exam_attempt_answers (attempt_id, question_id, selected_option_id, time_spent)`
-- Question palette grid index button #14 changes from slate to green (`bg-emerald-600`).
+### 3. Admit Card Generation & Release
+- Clicks **Release Admit Cards** -> `POST /api/examination/release-admit-card`.
+- Can exclude students with ineligibility reasons (e.g. low attendance, unpaid fees).
+- Students can download admit card with QR code verification.
 
 ---
 
-## Action 5.2: AI Proctoring Violation Detection & Telemetry Capture
+## Action 5.2: Computer-Based Exam (CBE) Live Session & AI Proctoring
 
-### 1. Event Trigger (Tab Switch / Window Blur)
-- Student attempts to open a search engine tab or minimize browser window.
-- Browser triggers `visibilitychange` event.
+### 1. Student Session Initialization
+- **Screen**: `ExamTakePage.tsx` (`/exam/:paperId`).
+- Checks browser fullscreen and camera access.
+- Timer countdown begins.
 
-### 2. Frontend Security Payload
-- Increments local violation counter (`tabSwitches += 1`).
-- Sends warning notification:
-  ```json
-  {
-    "attemptId": "attempt-9901-uuid",
-    "eventType": "TAB_SWITCH",
-    "timestamp": "2026-08-05T17:45:00.000Z",
-    "details": "User switched away from exam tab"
-  }
-  ```
+### 2. Live Auto-Save & Question Navigation
+- Student clicks option on MCQ -> `POST /api/examination/cbe/save-answer { paperId, questionId, selectedOption, answerText }`.
+- Frontend palette marks question answered (green) or flagged (amber).
 
-### 3. Backend Processing (`ExaminationService.logProctorEvent`)
-- `POST /api/v1/examination/cbe/proctor-event`
-- Increments `exam_proctor_logs.tab_switches`.
-- Compares `tab_switches` against `max_allowed_switches` (e.g. 3).
+### 3. Proctoring Violation Detection & Live Monitoring
+- If student switches browser tabs -> `POST /api/examination/cbe/proctor-event { eventType: 'TAB_SWITCH' }`.
+- Invigilator monitors active sessions on `ExamMonitorPage.tsx` (`/exams/:paperId/monitor`).
+- If tab violations exceed threshold (3), invigilator or automated rule terminates exam session.
+- Student clicks **Finish Exam** -> `POST /api/examination/cbe/submit` -> marks finalized.
 
-### 4. Database Mutations
-- `UPDATE exam_proctor_logs SET tab_switches = tab_switches + 1 WHERE attempt_id = :id`
-- If `tab_switches > 3`:
-  - `UPDATE exam_attempts SET status = 'TERMINATED_PROCTOR', end_time = NOW()`
-  - Websocket event sent to `ExamMonitorPage.tsx` alerting invigilator.
+---
 
-### 5. Final Outcome
-- Student screen locked with red alert message: `"Exam Terminated Due to Repeated Security Violations."`
+## Action 5.3: PBE Anonymisation & Answersheet Serial Recording
+
+### 1. Serial Number Binding
+- For Paper-Based Exams (PBE), invigilator records dummy booklet serials via `PUT /api/examination/answersheet-serials`.
+- Clicks **Lock Serials** -> `POST /api/examination/answersheet-serials/lock`.
+- Marks entry displays only serial numbers, preventing evaluator bias.
+
+---
+
+## Action 5.4: Results Processing Pipeline & CGPA Computation
+
+### 1. Marks Entry & Lock
+- Faculty enters subject component marks on `MySubjectsPage.tsx` / `MarksPage`.
+- `POST /api/academic/marks` -> saves marks.
+- `POST /api/academic/marks/lock` -> locks marks for processing.
+
+### 2. 4-Stage Result Progression
+1. **Compute**: `POST /api/academic/results/compute` -> computes SGPA, grade points, pass/fail status per student.
+2. **Review**: `POST /api/academic/results/review-all` -> marks reviewed by examination committee.
+3. **Approve**: `POST /api/academic/results/approve-all` -> Dean / Controller approval.
+4. **Publish**: `POST /api/academic/results/publish-all` -> results visible to students on `StudentProfilePage.tsx` and public portal (`PublicResultsPage.tsx`).
+5. **CGPA Update**: `POST /api/academic/results/compute-cgpa` -> updates cumulative GPA across all completed terms.

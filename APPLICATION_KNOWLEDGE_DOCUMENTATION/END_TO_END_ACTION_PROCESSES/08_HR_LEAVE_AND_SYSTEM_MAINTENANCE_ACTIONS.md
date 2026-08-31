@@ -1,44 +1,44 @@
-# Action Lifecycle Manual: HR, Audit & System Maintenance
+# Action Lifecycle Manual: HR Leave, Counselling & System Maintenance
 
-## Action 8.1: Staff Multi-Tier Leave Request Approval
+## Action 8.1: Staff Leave Application, Approval & Timetable Rescheduling
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Lecturer / Staff (`role: Lecturer`)
+### 1. Leave Application Submission
+- **Role**: Faculty / Teaching Staff
 - **Screen**: `LeaveRequestsPage.tsx`
-- **User Input**: Selects Leave Type (Casual Leave), Start Date, End Date (3 days), Reason (`"Medical checkup"`).
-- **Trigger**: Click **Submit Leave Application**.
+- Selects Leave Type (Casual, Sick, Earned), Start Date, End Date, Reason.
+- `POST /api/hr/leave-requests` -> checks remaining leave quota.
 
-### 2. Backend Logic & Guard Check (`HrService.applyLeave`)
-- `POST /api/v1/hr/leave-requests`
-- Checks `leave_balances.remaining_days` for employee.
-- Verifies `remaining_days >= requestedDays`.
-
-### 3. Database Mutations & Manager Approval
-- `INSERT INTO leave_requests (id, staff_user_id, leave_type_id, days = 3, status = 'PENDING_HOD')`
-- HOD opens `LeaveRequestsPage.tsx` -> Clicks **Approve**:
-  - `UPDATE leave_requests SET status = 'APPROVED', approved_by = :hodUserId`
-  - `UPDATE leave_balances SET used_days = used_days + 3, remaining_days = remaining_days - 3 WHERE staff_user_id = :id`
+### 2. Approval & Automated Class Rescheduling
+- HOD opens `LeaveRequestsPage.tsx` / `MyTasksPage.tsx`, clicks **Approve**.
+- `PATCH /api/hr/leave-requests/:id { action: 'APPROVED' }`.
+- `LeaveRescheduleService` automatically detects affected teaching timetable slots during leave period:
+  - Assigns designated substitute faculty where configured.
+  - Or moves slots to makeup pool and alerts students.
 
 ---
 
-## Action 8.2: Automated Database Backup Dump & Maintenance Gate Lock
+## Action 8.2: Student Counselling Session Lifecycle
 
-### 1. Trigger & Execution
-- **Initiator**: SuperAdmin / Configured Backup Cron (`BackupService.runAutomatedBackup`)
-- **Screen / API**: `SettingsPage.tsx` -> `POST /api/v1/backup/trigger`
+### 1. Booking & Scheduling
+- **Screen**: `CounsellingDeskPage.tsx` (Student View).
+- Student picks counsellor and available slot -> `POST /api/counselling/sessions`.
 
-### 2. Maintenance Mode Lock Phase
-- `BackupService` sets system flag `MAINTENANCE_MODE = true`.
-- `MaintenanceGuard` intercepts all incoming user requests:
-  - Non-SuperAdmin API requests return **HTTP 503 Service Unavailable**.
-  - `DashboardPage.tsx` displays overlay banner: `"System Undergoing Scheduled Maintenance"`.
+### 2. Confidential Notes & Completion
+- Counsellor opens `CounsellingDeskPage.tsx` -> conducts session -> records confidential encrypted clinical/academic notes -> `PATCH /api/counselling/sessions/:id`.
 
-### 3. Database Dump & Object Storage Upload
-- Spawns child process `pg_dump -h localhost -U postgres -d university_erp | gzip > backup_2026-08-05.sql.gz`.
-- Uploads compressed archive to MinIO `system-backups` S3 bucket.
-- Verifies archive byte integrity and checksum.
+---
 
-### 4. Lock Release & Completion
-- `INSERT INTO backup_records (file_key, size_bytes, checksum, status = 'VERIFIED')`
-- `BackupService` resets `MAINTENANCE_MODE = false`.
-- `MaintenanceGuard` releases request gate; normal API operations resume.
+## Action 8.3: System Maintenance Lockout & Production Promotion
+
+### 1. Maintenance Mode Activation
+- **Screen**: `SettingsPage.tsx`.
+- SuperAdmin enables maintenance toggle -> `POST /api/settings/maintenance { enabled: true }`.
+- `MaintenanceGuard` intercepts subsequent non-SuperAdmin requests with `503 Service Unavailable`.
+
+### 2. Production Promotion
+- **Screen**: `SettingsPage.tsx` / System Status console.
+- Calls `POST /api/auth/promote-to-production`:
+  - Validates email SMTP configuration is active.
+  - Rotates JWT signing secrets.
+  - Revokes seed SuperAdmin credential.
+  - Dispatches commissioning snapshot email to administrator.

@@ -1,58 +1,49 @@
-# Action Lifecycle Manual: Visual Workflow Engine & Saga Holds
+# Action Lifecycle Manual: Workflow Engine & Saga Resource Holds
 
-## Action 6.1: Multi-Actor Workflow Inbox Approval Action
+## Action 6.1: Visual Workflow Definition & Publication
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Department HOD (`role: HOD`)
-- **Screen**: `MyTasksPage.tsx`
-- **User Input**: Selects pending approval item `TASK-8802` (Student Course Exemption Request), enters review comment (`"Prerequisites met in previous semester, approved."`).
-- **Trigger**: Click **Approve & Advance Step** button.
-
-### 2. Frontend Payload
-- `POST /api/v1/workflow/instances/inst-8802/action`
-- Payload:
-  ```json
-  {
-    "stepInstanceId": "step-8802-1",
-    "action": "APPROVE",
-    "comments": "Prerequisites met in previous semester, approved."
-  }
-  ```
-
-### 3. Backend Workflow Engine Logic (`WorkflowEngineService.processAction`)
-- Verifies `req.user` matches assigned actor role (`HOD`) for step.
-- Updates current step instance status to `APPROVED`.
-- Evaluates transition rules in `WorkflowDefinition` graph:
-  - Next state: `DEAN_APPROVAL_REQUIRED`.
-  - Resolves next actor role (`Dean`).
-
-### 4. Database Mutations (Atomic Transaction)
-- `UPDATE workflow_step_instances SET status = 'APPROVED', comments = :comments, completed_at = NOW() WHERE id = 'step-8802-1'`
-- `INSERT INTO workflow_step_instances (instance_id, state_id, assigned_role = 'Dean', status = 'PENDING')`
-- `UPDATE workflow_instances SET current_state = 'AWAITING_DEAN_APPROVAL'`
-
-### 5. Side Effects & Outcome
-- Removes task from HOD's `MyTasksPage.tsx` inbox.
-- Inserts new pending task into Dean's `MyTasksPage.tsx` inbox.
-- Dispatches notification email to Dean.
+### 1. Visual Graph Composition
+- **Role**: SuperAdmin / Process Architect
+- **Screen**: `WorkflowDesignerPage.tsx`
+- Adds approval nodes (HOD, Dean, Finance), payment gates, condition branches, and resource reservation holds.
+- Connects nodes with transitions.
+- Clicks **Save Graph** -> `PUT /api/workflow/definitions/:id/graph`.
+- Clicks **Publish** -> `POST /api/workflow/definitions/:id/publish` (activates definition).
 
 ---
 
-## Action 6.2: Midnight Saga Hold Expiration Cron Execution
+## Action 6.2: Workflow Instance Execution & Actor Inbox Routing
 
-### 1. Trigger & Execution
-- **Initiator**: NestJS Cron Scheduler (`@Cron('0 0 * * *')`)
-- **Service**: `WorkflowSchedulerService.expirePaymentDemands`
-- **Execution Time**: Daily Midnight (00:00)
+### 1. Instance Triggering
+- User action (e.g. Leave Application, Hostel Application, Enrollment Cancellation) triggers workflow.
+- `WorkflowEngineService.startWorkflow(definitionKey, contextData)` initializes instance in `workflow_instances`.
+- State machine evaluates first step.
+- Resolves actor role using department/institute scope (e.g. "HOD of applicant's department").
+- Creates task in `workflow_tasks` with status `PENDING`.
 
-### 2. Backend Logic
-- Scans `workflow_holds` for active resource reservations (`status == 'ACTIVE'`) where `expires_at < NOW()`.
-- Executes Saga compensating actions:
-  - Releases soft reservation hold on facility/room (`ResourceReservationService.releaseHold`).
-  - Cancels associated fee demand (`FeeService.cancelDemand`).
-  - Marks workflow instance `EXPIRED`.
+### 2. Task Execution (Inbox Action)
+- Approver logs in, opens `MyTasksPage.tsx`.
+- Reviews request context and attached documents.
+- Action:
+  - **Approve**: `POST /api/workflow/tasks/:id/act { action: 'APPROVE', comments: 'Approved' }` -> advances state machine.
+  - **Reject**: `POST /api/workflow/tasks/:id/act { action: 'REJECT', comments: 'Reason' }` -> terminates instance with status `REJECTED`.
+  - **Delegate**: `POST /api/workflow/tasks/:id/act { action: 'DELEGATE', targetUserId }` -> reassigns task.
 
-### 3. Database Mutations
-- `UPDATE workflow_holds SET status = 'EXPIRED' WHERE expires_at < NOW() AND status = 'ACTIVE'`
-- `UPDATE workflow_instances SET status = 'EXPIRED' WHERE id IN (...)`
-- `UPDATE fee_demands SET status = 'CANCELLED' WHERE id IN (...)`
+---
+
+## Action 6.3: Saga Resource Hold & Timeout Expiration
+
+### 1. Temporary Resource Hold
+- Workflow steps requiring limited resources (e.g. hostel room, event auditorium) acquire a soft reservation hold via `ReservationService.acquireHold(resourceId, ttlMinutes: 30)`.
+- Prevents double-booking while user completes prerequisite steps (such as payment gate).
+
+### 2. Payment Gate Completion
+- User receives payment task -> initiates Razorpay checkout via `POST /api/workflow/tasks/:id/payment/order`.
+- Payment verified -> `POST /api/workflow/tasks/:id/payment/verify` -> hold converted to permanent allocation.
+
+### 3. Automated Expiry & Compensating Action
+- If user fails to pay within TTL:
+  - Background scheduler (`WorkflowSchedulerService`) detects expired hold.
+  - Releases soft reservation (`ReservationService.releaseHold`).
+  - Cancels workflow instance with status `EXPIRED`.
+  - Admin can manually trigger expiry check via `POST /api/workflow/admin/run-expiry`.

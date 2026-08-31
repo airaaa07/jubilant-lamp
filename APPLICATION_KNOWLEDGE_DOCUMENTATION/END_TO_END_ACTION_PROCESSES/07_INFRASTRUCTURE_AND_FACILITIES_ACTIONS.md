@@ -1,48 +1,47 @@
-# Action Lifecycle Manual: Infrastructure & Facilities
+# Action Lifecycle Manual: Infrastructure, Hostel, Transport & Library
 
-## Action 7.1: Hostel Bed Allocation Execution
+## Action 7.1: Hostel Allocation, Room Rates & Waitlist Lifecycle
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Hostel Warden (`role: InstAdmin` / Warden)
-- **Screen**: `HostelPage.tsx`
-- **User Input**: Selects Student (Alex Kim), Hostel Block A, Room 302, Bed 2, Start Date (Fall 2024).
-- **Trigger**: Click **Confirm Room & Bed Allocation**.
+### 1. Student Application & Waitlisting
+- **Screen**: `HostelPage.tsx` (Student View).
+- Student selects hostel block, room type preference (Single/Double/Triple), and mess package.
+- `POST /api/hostel/requests` -> creates hostel request record.
+- If rooms are full, request is placed in `GET /api/hostel/requests/waitlist` with queue number.
 
-### 2. API & Backend Logic (`HostelService.allocateBed`)
-- `POST /api/v1/hostel/allocations`
-- Checks `hostel_rooms.capacity` vs current `occupied_beds`.
-- Creates `HostelAllocation` record.
-- Triggers Hostel Mess Fee demand creation via `FeeService`.
+### 2. Warden Allocation & Confirmation
+- Warden views `HostelPage.tsx` room matrix.
+- Selects vacant bed in room `A-204` -> `POST /api/hostel/allocations` (room status becomes `BLOCKED`).
+- Student reviews allocation, clicks **Confirm** -> `PATCH /api/hostel/allocations/:id/confirm`.
+- System triggers hostel fee demand creation via `FeeService`.
 
-### 3. Database Mutations
-- `INSERT INTO hostel_allocations (id, student_id, room_id, bed_number, start_date, status = 'ALLOCATED')`
-- `UPDATE hostel_rooms SET occupied_beds = occupied_beds + 1 WHERE id = :roomId`
-- `INSERT INTO fee_demands (user_id, amount = 800, fee_head_id = 'HEAD_HOSTEL')`
-
-### 4. Outcome
-- Bed 2 marked occupied in green on Room Matrix view. Student receives hostel room allocation pass.
+### 3. Room Release & Prorated Refund
+- Student vacates room -> Warden clicks **Release Room** -> `PATCH /api/hostel/allocations/:id/release`.
+- `HostelRefundService` calculates unused days and generates prorated refund entry.
 
 ---
 
-## Action 7.2: Library Book Circulation Issue & Return
+## Action 7.2: Transport Route Management & Bus Pass Issuance
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Librarian (`role: InstAdmin` / Librarian)
-- **Screen**: `LibraryPage.tsx`
-- **User Input**: Scans Student ID barcode (`STU-2024-042`) and Book Copy ISBN (`978-0131103627`).
-- **Trigger**: Click **Issue Book Loan**.
+### 1. Route & Stop Setup
+- **Screen**: `TransportPage.tsx`.
+- Admin defines route (`Route 12 - North Campus`), stops with pickup times, and assigns bus vehicle (`POST /api/transport/routes`, `POST /api/transport/stops`).
 
-### 2. Backend Execution (`LibraryService.issueBook`)
-- `POST /api/v1/library/loans/issue`
-- Checks student max loan limit (e.g. Max 3 active loans).
-- Calculates due date (+14 Days).
+### 2. Student Bus Pass
+- Student enrolls in route via `POST /api/transport/enrollments`.
+- Transport fee demand generated.
+- After payment, system generates digital bus pass with QR code, visible on `StudentProfilePage.tsx` (Transport tab).
 
-### 3. Database Mutations
-- `INSERT INTO book_loans (student_id, book_copy_id, issue_date = NOW(), due_date = NOW() + 14 Days, status = 'ISSUED')`
-- `UPDATE book_copies SET status = 'CHECKED_OUT' WHERE id = :copyId`
+---
 
-### 4. Book Return & Fine Action
-- Upon return, if `NOW() > due_date`:
-  - `UPDATE book_loans SET return_date = NOW(), status = 'RETURNED'`
-  - `INSERT INTO library_fines (student_id, loan_id, amount = overdueDays * $1/day, status = 'UNPAID')`
-  - `UPDATE book_copies SET status = 'AVAILABLE'`
+## Action 7.3: Library Book Circulation, Fines & Reservation
+
+### 1. Issue & Return
+- **Screen**: `LibraryPage.tsx`.
+- Librarian scans student barcode and book ISBN -> `POST /api/library/loans/issue`.
+- Upon return, librarian clicks **Return** -> `POST /api/library/loans/return`.
+
+### 2. Overdue Fine Scheduler
+- `LibrarySchedulerService` runs daily cron:
+  - Scans overdue loans (`dueDate < now()`).
+  - Calculates fine per day (e.g. ₹5/day).
+  - Posts fine charge to student ledger.

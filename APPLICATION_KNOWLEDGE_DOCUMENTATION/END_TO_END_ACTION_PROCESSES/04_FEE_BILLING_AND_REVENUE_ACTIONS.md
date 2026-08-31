@@ -1,52 +1,52 @@
-# Action Lifecycle Manual: Fee Billing & Revenue Settlement
+# Action Lifecycle Manual: Fee Billing, Revenue & Payments
 
-## Action 4.1: Daily 2:00 AM Automated Recurring Billing Cron Execution
+## Action 4.1: Fee Structure Setup & Demand Generation
 
-### 1. Trigger & System Execution
-- **Initiator**: NestJS Cron Scheduler (`@Cron('0 2 * * *')`)
-- **Service**: `RecurringBillingService.processDailyBilling`
-- **Execution Time**: 2:00 AM Daily
+### 1. Fee Structure Definition
+- **Role**: Finance Officer / Admin
+- **Screen**: `FeesPage.tsx` / `ProgramFeeManager.tsx`
+- **Input**: Programme, Batch, Term, Fee Heads breakdown (Tuition: ₹50,000, Lab: ₹5,000, Examination: ₹3,000, Library: ₹2,000, Due Date: `2026-10-15`).
+- **Endpoint**: `POST /api/fee/structures` -> saved in `fee_structures` & `fee_structure_items`.
 
-### 2. Backend Logic & Rule Evaluation
-- Queries all active student profiles (`users.role == 'Student'` AND `users.isActive == true`).
-- Matches student `batch_id` and current active `term_id` against `fee_structures`.
-- Checks if a `FeeDemand` already exists for the student for the target term.
-- If demand is missing: calculates head-wise breakdown (Tuition Fee + Development Fee + Lab Fee).
-
-### 3. Database Transactions & Persistence
-- `INSERT INTO fee_demands (id, user_id, term_id, amount = 2500, due_date = NOW() + 30 Days, status = 'PENDING')`
-- `INSERT INTO fee_demand_items (demand_id, fee_head_id, amount)`
-- `INSERT INTO fee_ledger (user_id, demand_id, transaction_type = 'DEBIT', amount = 2500, balance_after = 2500)`
-
-### 4. Side Effects & Outcome
-- Dispatches batch notification email (`"Term 3 Fee Invoice Issued - Due in 30 Days"`) to student and parent email addresses.
-- Outstanding balance pill updated on student dashboard.
+### 2. Bulk Demand Generation
+- Finance clicks **Generate Demands** on `FeesPage.tsx`.
+- Calls `POST /api/fee/ledger/generate` with `{ batchTermId }`.
+- System creates `fee_demands` for all enrolled active students with status `PENDING`.
+- Alternatively, automated nightly cron `@Cron('0 2 * * *')` executes `RecurringBillingService.processDailyBilling` to scan and generate missing term demands.
 
 ---
 
-## Action 4.2: Student Razorpay Payment Checkout & Webhook Settlement
+## Action 4.2: Online Payment via Razorpay Gateway & Webhook Reconciliation
 
-### 1. User Action & Frontend Trigger
-- **User Role**: Student (`role: Student`) / Parent
-- **Screen**: `FeesPage.tsx`
-- **User Input**: Selects pending demand `DEM-10492` ($2,500), clicks **Pay Online via Razorpay**.
+### 1. User Action
+- **Screen**: `FeesPage.tsx` (Student View).
+- Student clicks **Pay Online** next to pending demand `DEM-2026-4891`.
 
-### 2. Order Creation Phase
-- `POST /api/v1/fee/demands/DEM-10492/create-order`
-- `FeeService` calls Razorpay API `orders.create({ amount: 250000, currency: "INR", receipt: "DEM-10492" })`.
-- Returns `razorpayOrderId` (`order_Nf89a7sD0a8s`).
+### 2. Order Creation
+- Frontend invokes `POST /api/fee/demands/:id/create-order`.
+- Backend interacts with Razorpay API, creates order with receipt string, returns `{ orderId, amount, currency: 'INR', keyId }`.
 
-### 3. Payment Execution & Webhook Verification
-- Student completes credit card / UPI payment inside Razorpay modal overlay.
-- Razorpay sends HTTP POST webhook to `/api/v1/fee/webhooks/razorpay`:
-  - Payload contains `razorpay_payment_id`, `razorpay_order_id`, `razorpay_signature`.
-- `FeeService.verifySignature` verifies HMAC-SHA256 signature against `RAZORPAY_KEY_SECRET`.
+### 3. Razorpay Checkout & Webhook
+- Razorpay modal opens on client; student completes payment via UPI / Card / NetBanking.
+- Razorpay sends server-to-server webhook `POST /api/fee/webhooks/razorpay` containing `razorpay_order_id`, `razorpay_payment_id`, and `razorpay_signature`.
+- Backend verifies cryptographic HMAC SHA256 signature using `RAZORPAY_WEBHOOK_SECRET`.
 
-### 4. Database Mutations (Atomic Transaction)
-- `UPDATE fee_demands SET status = 'PAID', paid_at = NOW() WHERE id = 'DEM-10492'`
-- `INSERT INTO payments (id, demand_id, razorpay_payment_id, amount = 2500, status = 'SUCCESS')`
-- `INSERT INTO fee_ledger (user_id, payment_id, transaction_type = 'CREDIT', amount = 2500, balance_after = 0)`
+### 4. Database Mutations & Receipt Generation
+- `prisma.feeDemand.update(...)` setting status = `PAID`, `paidAt = now()`.
+- `prisma.feePayment.create(...)` creating receipt record with auto-incremented receipt number `REC-2026-00981`.
+- `prisma.studentLedger.create(...)` recording credit transaction.
+- Generates official PDF receipt for instant download via `GET /api/fee/payments/receipt/:receiptNo`.
 
-### 5. Document & Final Outcome
-- `DocumentsService.renderReceiptPDF` generates official fee receipt PDF -> Uploads to MinIO `generated-docs/receipts/REC-10492.pdf`.
-- Fee demand status updated to `PAID` in green; receipt download button available on screen.
+---
+
+## Action 4.3: Scholarships, Waivers & Deposit Refunds
+
+### 1. Scholarships & Waivers
+- Student submits fee waiver request via `POST /api/fee/waivers`.
+- Admin reviews request on `FeesPage.tsx` (Waivers tab).
+- Admin clicks **Approve** -> `PATCH /api/fee/waivers/:id/approve` -> recalculates remaining fee demand amount.
+
+### 2. Deposit Refund Flow
+- Student checks refund eligibility via `GET /api/fee/deposit-refund/eligibility`.
+- Student inputs bank details (Account No, IFSC, Account Holder) -> `POST /api/fee/deposit-refund`.
+- Finance approves refund -> system generates payout transaction and updates deposit ledger.
