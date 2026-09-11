@@ -1,139 +1,89 @@
 # Module 03: Academics, Curriculum & Timetable — End-to-End Action Processes
 
-> **Scope**: Backend request-to-response cycles, DTO payloads, NestJS controller mappings, and Prisma mutations for student elective elections, timetable scheduling, faculty self-projections, attendance register marking, and draft result publishing.
+> **Enterprise Technical Specification**: Detailed academic lifecycle operations, curriculum mapping, elective subject pool allocations, weekly timetable scheduling with three-dimensional conflict resolution, teaching staff timetable self-projections (commit `d789ee4f`), daily lecture attendance registers, subject enrollment rosters with section tabs and PDF generation (commit `f8e83dfa`), continuous evaluation marks entry, draft result balloons (commit `af104358`), and term result calculations.
 
 ---
 
-## Action 1: Student Elective Election & Lock (`POST /api/academic/election/lock`)
+## Complete Action & Endpoint Catalog
+
+| Action # | Endpoint | HTTP Method | Primary Actor | Description & Security Scope |
+|:---:|:---|:---:|:---|:---|
+| **01** | `/api/academic/election/pools` | `GET` | Student / Staff | Retrieves active elective subject pools, credit constraints, and remaining seats for a batch term. |
+| **02** | `/api/academic/election/lock` | `POST` | Enrolled Student | Submits and locks chosen elective subjects; atomically enrolls student into `StudentSubjectEnrollment`. |
+| **03** | `/api/academic/enrollment/roster` | `GET` | Faculty / HOD | Enrolled-student roster per batch with section tabs, alphabetical sorting, and academic header (commit `f8e83dfa`). |
+| **04** | `/api/academic/enrollment/roster/pdf` | `GET` | Faculty / HOD | Generates printable PDF roster with full institutional hierarchy prefix (Univ/Inst/Dept/Course/Prog/Batch/Term). |
+| **05** | `/api/timetable/staff/self` (or `/my`) | `GET` | Teaching Faculty | Faculty personal weekly timetable self-view; accounts for user impersonation sessions (commit `d789ee4f`). |
+| **06** | `/api/timetable/slots` | `POST` / `GET` | InstAdmin | Configures institutional lecture time slots (e.g. 09:00 - 10:00) and day-of-week recurrence. |
+| **07** | `/api/timetable/schedule` | `POST` | Academic Scheduler | Runs conflict detection and books classroom, teacher, and section for recurring weekly lectures. |
+| **08** | `/api/timetable/special` | `POST` | HOD / Dean | Books guest lectures and one-off seminars; overrides regular time slots with conflict alerts. |
+| **09** | `/api/timetable/holidays` | `POST` / `DELETE`| InstAdmin | Records institutional holidays; automatically prompts for lecture reschedule plans. |
+| **10** | `/api/academic/attendance` | `POST` | Teaching Faculty | Marks lecture attendance register (Present, Absent, Late, Medical) with real-time percentage recalculation. |
+| **11** | `/api/academic/attendance/summary` | `GET` | Student / Faculty | Retrieves aggregate lecture attendance percentage against 75% mandatory threshold. |
+| **12** | `/api/academic/marks` | `POST` / `PATCH` | Teaching Faculty | Records Continuous Internal Evaluation (CIE) component marks (Quizzes, Midterms, Assignments). |
+| **13** | `/api/academic/marks/lock` | `POST` | HOD | Immutably locks subject component marks; prevents retroactive grade alterations. |
+| **14** | `/api/academic/results/draft` | `GET` | Exam Cell / HOD | Generates term results draft with per-row `NoMarks` and `Unlocked` status balloons (commit `af104358`). |
+| **15** | `/api/academic/results/publish` | `POST` | Exam Controller | Calculates final SGPA/CGPA, credits earned, and publishes official term grades. |
+
+---
+
+## Action 1: Enrolled Student Subject Roster & PDF Export (`GET /api/academic/enrollment/roster` & `roster/pdf`)
+
+Per commits `f8e83dfa` and `7c9eda16`, subject enrollment returns a section-tabbed roster with alphabetical sorting and structured PDF report export.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    Client->>ElectionController: POST /api/academic/election/lock
-    ElectionController->>ElectionService: lockStudentElection(studentId, batchTermId, subjectIds)
-    ElectionService->>Prisma: Check active election window for batchTerm
-    ElectionService->>Prisma: Validate credit sum against StreamLabel requirements
-    alt Credit mismatch or window closed
-        ElectionService-->>ElectionController: Throw BadRequestException
-    else Constraints valid
-        ElectionService->>Prisma: $transaction [create StudentTermElection, upsert StudentSubjectEnrollment]
-        Prisma-->>ElectionService: Transaction committed
-        ElectionService->>NotificationWorker: emit("ELECTIVE_LOCKED_RECEIPT")
-        ElectionService-->>ElectionController: Success status
-        ElectionController-->>Client: 200 OK
-    end
+    actor Teacher as Teaching Faculty / HOD
+    participant UI as MasterDataPage / MySubjectsPage
+    participant Ctrl as EnrollmentController
+    participant Service as EnrollmentService
+    participant DB as PostgreSQL (Prisma)
+    participant Worker as Puppeteer PDF Worker
+
+    Teacher->>UI: Selects Subject "CS-301: Operating Systems" -> Clicks "Student Roster"
+    UI->>Ctrl: GET /api/academic/enrollment/roster?batchTermSubjectId=bts_9921
+    Ctrl->>Service: getRosterBySection(batchTermSubjectId)
+    Service->>DB: Query StudentSubjectEnrollment joined with Student, User, Section
+    DB-->>Service: Enrolled students grouped by Section (Section A: 48, Section B: 45)
+    Service-->>Ctrl: Roster payload sorted alphabetically by student.name
+    Ctrl-->>UI: 200 OK (Renders section tabs: "Section A (48)", "Section B (45)")
+
+    Teacher->>UI: Clicks "Export PDF Roster"
+    UI->>Ctrl: GET /api/academic/enrollment/roster/pdf?batchTermSubjectId=bts_9921&sectionId=sec_01
+    Ctrl->>Worker: Render PDF template with academic header (Course Code prefix per 7c9eda16)
+    Worker-->>Ctrl: Binary PDF stream
+    Ctrl-->>Teacher: Downloads "Roster_BTECH-CSE_Term3_SecA.pdf"
 ```
 
 ### Protocol Specifications
-- **HTTP Method & URL**: `POST /api/academic/election/lock`
-- **Guards**: `JwtAuthGuard`, `StudentGuard`
-- **Request Body (DTO: `LockElectionDto`)**:
+- **HTTP Method & URL**: `GET /api/academic/enrollment/roster`
+- **Query Parameters**: `batchTermSubjectId=bts_9921`
+- **Response Payload (200 OK)**:
   ```json
   {
-    "batchTermId": "bterm_0982",
-    "electedSubjectIds": [
-      "subj_cloud_arch_01",
-      "subj_cyber_sec_04"
-    ]
-  }
-  ```
-- **Controller**: `ElectionController.lock(@Req() req, @Body() dto: LockElectionDto)`
-- **Prisma Database Mutation**:
-  ```prisma
-  await prisma.$transaction(async (tx) => {
-    // 1. Create or update election record as locked
-    const election = await tx.studentTermElection.upsert({
-      where: {
-        studentId_batchTermId: {
-          studentId: req.user.studentId,
-          batchTermId: dto.batchTermId
-        }
-      },
-      create: {
-        studentId: req.user.studentId,
-        batchTermId: dto.batchTermId,
-        isLocked: true,
-        lockedAt: new Date()
-      },
-      update: {
-        isLocked: true,
-        lockedAt: new Date()
-      }
-    });
-
-    // 2. Enroll student into each elected BatchTermSubject
-    for (const subjId of dto.electedSubjectIds) {
-      await tx.studentSubjectEnrollment.create({
-        data: {
-          studentId: req.user.studentId,
-          batchTermSubjectId: subjId,
-          enrollmentType: "ELECTIVE",
-          status: "ENROLLED"
-        }
-      });
-    }
-
-    return election;
-  });
-  ```
-- **Response (200 OK)**:
-  ```json
-  {
-    "success": true,
-    "lockedAt": "2026-09-11T12:00:00.000Z",
-    "enrolledSubjectCount": 2
-  }
-  ```
-
----
-
-## Action 2: Retrieve Teaching Staff Weekly Timetable (`GET /api/timetable/staff/:staffId` & `/self`)
-
-- **HTTP Method & URL**: `GET /api/timetable/staff/self` (or `/api/timetable/my`)
-- **Backend Flow (Commit `d789ee4f`)**:
-  1. Resolves `staffId` directly from authenticated `req.user.staffId` (or via user impersonation session).
-  2. Queries `TimetableEntry` joined with `TimeSlot`, `BatchTermSubject`, `Room`, and `Section`.
-  3. Formats entries into a day-of-week matrix (1 = Monday, ..., 7 = Sunday) with slot collision checks.
-- **Prisma Query**:
-  ```prisma
-  const entries = await prisma.timetableEntry.findMany({
-    where: {
-      staffSubject: {
-        staffId: resolvedStaffId
-      }
+    "subject": {
+      "code": "CS301",
+      "name": "Operating Systems",
+      "credits": 4,
+      "courseCode": "BTECH-CSE",
+      "programme": "Bachelor of Technology in Computer Science",
+      "term": "Term 3"
     },
-    include: {
-      timeSlot: true,
-      batchTermSubject: {
-        include: {
-          universitySubject: true,
-          batchTerm: { include: { batch: true } }
-        }
-      },
-      room: true,
-      section: true
-    },
-    orderBy: [
-      { timeSlot: { dayOfWeek: "asc" } },
-      { timeSlot: { startTime: "asc" } }
-    ]
-  });
-  ```
-- **Response (200 OK)**:
-  ```json
-  {
-    "staffId": "stf_8812",
-    "staffName": "Prof. David Miller",
-    "totalWeeklyLectures": 14,
-    "entries": [
+    "sections": [
       {
-        "id": "tt_entry_101",
-        "dayOfWeek": 1,
-        "timeSlot": { "label": "09:00 - 10:00", "startTime": "09:00", "endTime": "10:00" },
-        "subjectCode": "CS301",
-        "subjectName": "Operating Systems",
-        "section": "Section A",
-        "room": "Room 302 (Block B)"
+        "sectionId": "sec_01",
+        "sectionName": "Section A",
+        "totalEnrolled": 48,
+        "students": [
+          {
+            "studentId": "std_01",
+            "rollNumber": "2026-CSE-001",
+            "enrollmentNumber": "ENR-2026-0912",
+            "name": "Aaron Paul",
+            "attendancePercentage": 88.4,
+            "status": "ENROLLED"
+          }
+        ]
       }
     ]
   }
@@ -141,33 +91,77 @@ sequenceDiagram
 
 ---
 
-## Action 3: Mark Daily Attendance Register (`POST /api/academic/attendance`)
+## Action 2: Teaching Staff Personal Timetable Self-View (`GET /api/timetable/staff/self`)
 
-- **HTTP Method & URL**: `POST /api/academic/attendance`
-- **Request Body (DTO: `MarkAttendanceDto`)**:
-  ```json
-  {
-    "batchTermSubjectId": "bts_9921",
-    "sectionId": "sec_01",
-    "date": "2026-09-11",
-    "timeSlotId": "slot_01",
-    "records": [
-      { "studentId": "std_01", "status": "PRESENT" },
-      { "studentId": "std_02", "status": "ABSENT", "remarks": "Unexcused" },
-      { "studentId": "std_03", "status": "MEDICAL_LEAVE" }
-    ]
-  }
-  ```
+Per commit `d789ee4f`, non-admin teaching faculty default to their own personalized weekly timetable grid, with support for impersonation sessions.
+
+- **HTTP Method & URL**: `GET /api/timetable/staff/self`
+- **Guards**: `JwtAuthGuard`
 - **Backend Flow**:
-  1. Validates caller is the assigned faculty for `batchTermSubjectId` or holds `HOD` / `InstAdmin` role.
-  2. Executes batch upsert of `StudentAttendance` records for the date and lecture slot.
-  3. Recalculates `SubjectAttendanceSummary` percentage for each student.
-  4. If percentage drops below threshold (`75%`), queues warning notification to student and parent.
+  1. Resolves `staffId` directly from `req.user.staffId` (or target user if impersonating).
+  2. If user has no associated `Staff` profile: throws `403 Forbidden` ("User is not a registered staff member").
+  3. Queries `TimetableEntry` joined with `TimeSlot`, `Room`, and `Section`.
+  4. Organizes entries by `dayOfWeek` (1=Mon ... 7=Sun) and `timeSlot.startTime`.
 - **Response (200 OK)**:
   ```json
   {
-    "success": true,
-    "recordedCount": 3,
-    "date": "2026-09-11"
+    "staff": {
+      "id": "stf_8812",
+      "name": "Dr. Alan Turing",
+      "employeeCode": "EMP-CSE-004",
+      "designation": "Professor"
+    },
+    "weeklyLecturesCount": 12,
+    "grid": {
+      "1": [
+        {
+          "slot": "09:00 - 10:00",
+          "subjectCode": "CS301",
+          "subjectName": "Operating Systems",
+          "section": "Section A",
+          "room": "Hall 302 (Block B)"
+        }
+      ]
+    }
+  }
+  ```
+
+---
+
+## Action 3: Term Results Draft with NoMarks / Unlocked Status Balloons (`GET /api/academic/results/draft`)
+
+Per commit `af104358`, term result drafts supply per-row status warning balloons for missing marks and unlocked components.
+
+- **HTTP Method & URL**: `GET /api/academic/results/draft`
+- **Query Parameters**: `batchTermId=bterm_01&showNoMarks=true&showUnlocked=true`
+- **Response Payload (200 OK)**:
+  ```json
+  {
+    "batchTermId": "bterm_01",
+    "totalStudents": 120,
+    "readyForPublishCount": 114,
+    "warningCount": 6,
+    "draftRows": [
+      {
+        "studentId": "std_042",
+        "rollNumber": "2026-CSE-042",
+        "name": "Sarah Connor",
+        "sgpa": 9.25,
+        "cgpa": 9.10,
+        "result": "PASS",
+        "warnings": [
+          {
+            "type": "NO_MARKS",
+            "subjectCode": "CS304",
+            "message": "Theory marks not entered by Prof. Miller"
+          },
+          {
+            "type": "UNLOCKED",
+            "subjectCode": "CS302",
+            "message": "Internal marksheet not yet locked by HOD"
+          }
+        ]
+      }
+    ]
   }
   ```
