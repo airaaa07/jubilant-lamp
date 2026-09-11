@@ -83,9 +83,9 @@ graph TD
         MinIO[("MinIO S3 Storage<br/>(Documents, Photos, Marksheets)")]
     end
 
-    Nginx -->|/ (Static Shell)| SPA
-    Nginx -->|/api/*| Core
-    Nginx -->|/cbe/*| CBE
+    Nginx -->|"/ - Static Shell"| SPA
+    Nginx -->|"/api/* - REST API"| Core
+    Nginx -->|"/cbe/* - Realtime Exam"| CBE
     
     Core --> Postgres
     Core --> Redis
@@ -97,6 +97,7 @@ graph TD
     CBE --> Postgres
     Worker --> Redis
     Worker --> Postgres
+
 ```
 
 ---
