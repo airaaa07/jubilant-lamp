@@ -128,21 +128,23 @@ sequenceDiagram
     participant Service as BatchTermService
     participant DB as PostgreSQL (Prisma)
 
-    Admin->>Ctrl: PATCH /api/master-data/batch-terms/:id/unlock { reason }
+    Admin->>Ctrl: PATCH /api/master-data/batch-terms/:id/unlock with reason
     Ctrl->>Service: unlockBatchTerm(id, reason, user)
-    Service->>DB: prisma.batchTerm.findUnique({ where: { id } })
-    Service->>DB: Check studentSubjectEnrollment.count({ where: { batchTermId: id } })
-    
-    alt Enrolled Students > 0 (count = 42)
-        Service-->>Ctrl: Throw BadRequestException("Cannot unlock: 42 students enrolled")
+    Service->>DB: batchTerm.findUnique where id
+    DB-->>Service: BatchTerm record
+    Service->>DB: studentSubjectEnrollment.count for batchTermId
+    DB-->>Service: Enrollment count
+
+    alt Enrolled Students greater than 0
+        Service-->>Ctrl: BadRequestException with enrollment count
         Ctrl-->>Admin: 400 Bad Request
-    else Clean Term (count = 0)
-        Service->>DB: $transaction [
-            1. batchTerm.update({ isLocked: false, status: 'ACTIVE' })
-            2. auditLog.create("BATCH_TERM_SUPERADMIN_UNLOCKED")
-        ]
-        DB-->>Service: Committed
-        Service-->>Ctrl: { success: true, status: 'ACTIVE' }
+    else Clean Term with count 0
+        Service->>DB: Begin transaction
+        Service->>DB: batchTerm.update set isLocked false and status ACTIVE
+        Service->>DB: auditLog.create BATCH_TERM_SUPERADMIN_UNLOCKED
+        Service->>DB: Commit transaction
+        DB-->>Service: Transaction committed
+        Service-->>Ctrl: Success with ACTIVE status
         Ctrl-->>Admin: 200 OK
     end
 ```
