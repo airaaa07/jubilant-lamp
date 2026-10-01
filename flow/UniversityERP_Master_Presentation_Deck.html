@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UniversityERP - Enterprise Architecture & Functional Presentation</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-white: #ffffff;
+      --text-body: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent-blue: #38bdf8;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-purple: #a855f7;
+      --accent-rose: #f43f5e;
+      --accent-indigo: #6366f1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: #020617;
+      color: var(--text-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Top Control Bar */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 1000;
+    }
+
+    .top-bar .brand {
+      font-weight: 700;
+      color: var(--text-white);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .top-bar .brand span {
+      color: var(--accent-blue);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-body);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #273549;
+      color: var(--text-white);
+      border-color: var(--accent-blue);
+    }
+
+    select.slide-select {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-body);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      max-width: 320px;
+    }
+
+    .progress-bar-container {
+      position: fixed;
+      top: 48px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: rgba(51, 65, 85, 0.4);
+      z-index: 1001;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-green));
+      width: 3.125%;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Presentation Screen Container (16:9) */
+    .viewport {
+      width: 100vw;
+      height: calc(100vh - 48px);
+      margin-top: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .slide-stage {
+      width: 1280px;
+      height: 720px;
+      max-width: 95vw;
+      max-height: calc(95vw * 9 / 16);
+      aspect-ratio: 16 / 9;
+      background: var(--bg-dark);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding: 32px 40px 24px 40px;
+    }
+
+    /* Slide Content Header */
+    .slide-header {
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 14px;
+      background: rgba(30, 58, 138, 0.6);
+      border: 1px solid var(--accent-blue);
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .slide-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-white);
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .slide-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .slide-divider {
+      height: 1px;
+      background: var(--card-border);
+      margin-top: 12px;
+    }
+
+    /* Slide Body Grid Layouts */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      height: 100%;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      height: 100%;
+    }
+
+    .grid-2x4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 16px;
+      height: 100%;
+    }
+
+    /* Card Styling */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 16px 18px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--accent-blue);
+    }
+
+    .card.blue::before { background: var(--accent-blue); }
+    .card.green::before { background: var(--accent-green); }
+    .card.amber::before { background: var(--accent-amber); }
+    .card.purple::before { background: var(--accent-purple); }
+    .card.rose::before { background: var(--accent-rose); }
+    .card.indigo::before { background: var(--accent-indigo); }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 4px;
+    }
+
+    .card.blue .card-title { color: var(--accent-blue); }
+    .card.green .card-title { color: var(--accent-green); }
+    .card.amber .card-title { color: var(--accent-amber); }
+    .card.purple .card-title { color: var(--accent-purple); }
+    .card.rose .card-title { color: var(--accent-rose); }
+    .card.indigo .card-title { color: var(--accent-indigo); }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    }
+
+    .card-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+
+    .card-list li {
+      font-size: 11.5px;
+      line-height: 1.4;
+      color: var(--text-body);
+      position: relative;
+      padding-left: 14px;
+    }
+
+    .card-list li::before {
+      content: '•';
+      position: absolute;
+      left: 0;
+      color: var(--accent-blue);
+      font-weight: bold;
+    }
+
+    .card-list li strong {
+      color: var(--text-white);
+    }
+
+    /* Table Styling */
+    .table-container {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      text-align: left;
+    }
+
+    table.data-table th {
+      background: #1e3a8a;
+      color: var(--accent-blue);
+      font-weight: 700;
+      padding: 10px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    table.data-table td {
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+      color: var(--text-body);
+    }
+
+    table.data-table tr:nth-child(even) td {
+      background: rgba(30, 41, 59, 0.5);
+    }
+
+    table.data-table tr:nth-child(odd) td {
+      background: rgba(24, 32, 47, 0.5);
+    }
+
+    table.data-table tr td:first-child {
+      color: var(--text-white);
+      font-weight: 600;
+    }
+
+    /* Metrics Banner */
+    .metrics-banner {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin: 24px 0;
+    }
+
+    .metric-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+      position: relative;
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent-blue);
+    }
+
+    .metric-val {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--accent-blue);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .metric-lbl {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-white);
+      margin-bottom: 2px;
+    }
+
+    .metric-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    /* Footer */
+    .slide-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 14px;
+      margin-top: auto;
+      border-top: 1px solid rgba(51, 65, 85, 0.4);
+      font-size: 11px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .slide-footer .f-right {
+      color: var(--accent-blue);
+      font-weight: 700;
+    }
+
+    /* Slide View Toggle */
+    .slide {
+      display: none;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    .slide.active {
+      display: flex;
+    }
+
+    /* Keyboard Help Tooltip */
+    .keyboard-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .kbd {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-blue);
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation & Control Bar -->
+  <div class="top-bar">
+    <div class="brand">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      <span>UniversityERP</span> Executive Presentation Deck
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="prevSlide()" title="Previous Slide (Left Arrow)">◀ Prev</button>
+      <select class="slide-select" id="slideSelector" onchange="goToSlide(this.value)">
+        <!-- Options populated dynamically -->
+      </select>
+      <button class="btn" onclick="nextSlide()" title="Next Slide (Right Arrow / Space)">Next ▶</button>
+      <button class="btn" onclick="toggleFullScreen()" title="Full Screen (F)">⛶ Fullscreen</button>
+    </div>
+    <div class="keyboard-hint">
+      Use <span class="kbd">◀</span> <span class="kbd">▶</span> or <span class="kbd">Space</span> | <span class="kbd">F</span> Fullscreen
+    </div>
+  </div>
+
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- 16:9 Presentation Stage -->
+  <div class="viewport">
+    <div class="slide-stage" id="slideStage">
+      <!-- Slides will be injected here -->
+      
+    <div class="slide active" id="slide-1">
+      <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 36px 44px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+        <div>
+          <span class="pill">ENTERPRISE CAMPUS OPERATING SYSTEM (CAMPUS OS)</span>
+          <h1 style="font-size: 42px; font-weight: 800; color: #fff; margin-top: 10px; line-height: 1.1;">UniversityERP</h1>
+          <h2 style="font-size: 20px; font-weight: 700; color: var(--accent-blue); margin-top: 6px;">Unified Higher Education Operating System & Enterprise Architecture Blueprint</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 8px;">Authoritative 20-Year Principal Enterprise Architect Blueprint &bull; Next-Gen Cloud-Native Campus Infrastructure</p>
+        </div>
+
+        <div class="metrics-banner">
+          <div class="metric-card"><div class="metric-val">14</div><div class="metric-lbl">Domain Modules</div><div class="metric-sub">01 Auth to 14 Analytics</div></div>
+          <div class="metric-card" style="--accent-blue: var(--accent-green);"><div class="metric-val" style="color: var(--accent-green);">24</div><div class="metric-lbl">System Roles</div><div class="metric-sub">SuperAdmin to Alumni</div></div>
+          <div class="metric-card" style="--accent-blue: var(--accent-amber);"><div class="metric-val" style="color: var(--accent-amber);">138</div><div class="metric-lbl">Prisma Models</div><div class="metric-sub">10 Relational Clusters</div></div>
+          <div class="metric-card" style="--accent-blue: var(--accent-purple);"><div class="metric-val" style="color: var(--accent-purple);">71</div><div class="metric-lbl">API Controllers</div><div class="metric-sub">43 Modular Services</div></div>
+          <div class="metric-card" style="--accent-blue: var(--accent-rose);"><div class="metric-val" style="color: var(--accent-rose);">49</div><div class="metric-lbl">Frontend Pages</div><div class="metric-sub">React 18 SPA Suite</div></div>
+        </div>
+
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 8px; padding: 14px 18px;">
+          <div style="font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 4px; text-transform: uppercase;">Core Technologies & Statutory Foundation</div>
+          <div style="font-size: 12px; color: var(--accent-blue); line-height: 1.4;">
+            React 18 &bull; Vite &bull; Tailwind CSS &bull; NestJS 10 &bull; TypeScript &bull; PostgreSQL 16 &bull; Prisma ORM &bull; Redis 7 &bull; Razorpay &bull; TRAI DLT &bull; DigiLocker / ABC / APAAR &bull; Biometrics IoT &bull; AWS S3
+          </div>
+        </div>
+
+        <div class="slide-footer" style="padding-top: 8px; border-top: none;">
+          <div>Produced by Principal Enterprise Architect | National Education Policy (NEP 2020) & NAAC / NBA / NIRF Ready</div>
+          <div class="f-right">Slide 1 of 32</div>
+        </div>
+      </div>
+    </div>
+    
+
+        <div class="slide" id="slide-2">
+          <div class="slide-header">
+            <span class="pill">EXECUTIVE STRATEGY</span>
+            <div class="slide-title">Executive Summary: The Unified Campus Paradigm Shift</div>
+            <div class="slide-subtitle">Transforming fragmented point solutions into a cohesive, high-performance institutional operating system</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card rose">
+        <div class="card-title">1. The Institutional Dilemma</div>
+        <div class="card-subtitle">Challenges of Legacy University ERPs</div>
+        <ul class="card-list">
+          <li><strong>Legacy Point Solutions:</strong> Unconnected silos for admissions, LMS, exams, and accounts causing data discrepancies.</li>
+          <li><strong>Manual Friction & Lag:</strong> Spreadsheets, manual paper registers, and human reconciliation leading to revenue leakage.</li>
+          <li><strong>Compliance Vulnerability:</strong> Difficulty assembling verified evidence for NAAC SSR, NBA OBE, NIRF, and AICTE/UGC.</li>
+          <li><strong>Astronomical TCO:</strong> Exorbitant licensing, implementation fees, and rigid lock-in of legacy Tier-1 ERP suites.</li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <div class="card-title">2. The UniversityERP Solution</div>
+        <div class="card-subtitle">Next-Generation Operating Architecture</div>
+        <ul class="card-list">
+          <li><strong>Unified System of Record:</strong> All academic, financial, operational, and student data unified in a single relational schema.</li>
+          <li><strong>Automated Workflows:</strong> Multi-tier approval chains, SLA enforcement, and automated trigger-based notifications.</li>
+          <li><strong>Statutory First Design:</strong> Native alignment with NEP 2020, CBCS credits, APAAR/ABC syncing, and TRAI DLT compliance.</li>
+          <li><strong>Zero Vendor Lock-in:</strong> Clean modern stack (TypeScript, NestJS, React, PostgreSQL) designed for long-term self-sovereignty.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">3. Measurable Strategic ROI</div>
+        <div class="card-subtitle">Quantifiable Institutional Value</div>
+        <ul class="card-list">
+          <li><strong>65% Cost Reduction:</strong> Significant drop in operational administrative overhead and paper processing costs.</li>
+          <li><strong>100% Revenue Integrity:</strong> Zero fee leakage via automated billing, Razorpay dual verification, and double-entry ledger.</li>
+          <li><strong>4x Faster Accreditation:</strong> Instant quantitative data compilation for NAAC SSR Criteria 1-7 and NBA CO-PO attainment.</li>
+          <li><strong>99.95% Availability:</strong> Stateless horizontal scaling with Redis caching and automated multi-AZ PostgreSQL replication.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 2 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-3">
+          <div class="slide-header">
+            <span class="pill">ENTERPRISE ARCHITECTURE</span>
+            <div class="slide-title">System Architecture & C4 Technical Topology</div>
+            <div class="slide-subtitle">Microservices-ready modular monolith with strict layer decoupling, zero-trust security, and high availability</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-4">
+      <div class="card blue">
+        <div class="card-title">Frontend Layer (Client)</div>
+        <div class="card-subtitle">49 Administrative & Portal Pages</div>
+        <ul class="card-list">
+          <li><strong>React 18 SPA Suite:</strong> Vite build tool, dynamic component routing, role-scoped sidebar navigation.</li>
+          <li><strong>State & Interaction:</strong> React hooks, optimistic UI updates, responsive Tailwind CSS grid layouts.</li>
+          <li><strong>Visual Engines:</strong> Interactive Canvas Document Designer, drag-and-drop timetable, seat matrix.</li>
+          <li><strong>Client Security:</strong> Zero storage of sensitive credentials, HttpOnly auth tokens, XSS/CSRF mitigation.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Application Layer (Core API)</div>
+        <div class="card-subtitle">71 Controllers, 43 Modules</div>
+        <ul class="card-list">
+          <li><strong>NestJS 10 Framework:</strong> TypeScript modular monolith structured into 43 isolated domain modules.</li>
+          <li><strong>Robust Controller Layer:</strong> 71 Controllers exposing RESTful endpoints with OpenAPI/Swagger specifications.</li>
+          <li><strong>Validation & Guards:</strong> Class-validator DTO pipes, JWT authentication, RBAC effective union guards.</li>
+          <li><strong>Interceptors & Filters:</strong> Global exception handling, response formatting, and tamper-proof audit logging.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Data & Persistence Layer</div>
+        <div class="card-subtitle">138 Models, Redis & S3</div>
+        <ul class="card-list">
+          <li><strong>PostgreSQL 16 Engine:</strong> ACID compliant relational store hosting 138 Prisma models across 10 clusters.</li>
+          <li><strong>Prisma 5.x ORM:</strong> Type-safe database client, foreign key enforcement, connection pooling.</li>
+          <li><strong>Redis 7 In-Memory Cache:</strong> Session state, rate limiting counters, timetable and query result caching.</li>
+          <li><strong>Transaction Boundaries:</strong> Atomic rollback guarantees using prisma.$transaction on all financial ops.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">Statutory Gateways Layer</div>
+        <div class="card-subtitle">External Integrations & IoT</div>
+        <ul class="card-list">
+          <li><strong>FinTech Gateway:</strong> Razorpay payments, subscriptions, refunds, and HMAC-SHA256 webhooks.</li>
+          <li><strong>Telecom (TRAI DLT):</strong> Approved DLT templates, Principal Entity ID, dynamic token substitution.</li>
+          <li><strong>Academic Repositories:</strong> DigiLocker, Academic Bank of Credits (ABC), and APAAR ID federation.</li>
+          <li><strong>Hardware & Storage:</strong> Biometric IoT attendance gateways, AWS S3 / MinIO pre-signed object store.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 3 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-4">
+          <div class="slide-header">
+            <span class="pill">FUNCTIONAL CATALOG</span>
+            <div class="slide-title">Master Domain Functional Matrix: 14 Core Modules</div>
+            <div class="slide-subtitle">Exhaustive coverage of every institutional operational unit with zero functional gaps</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 22%;">Module ID & Name</th>
+            <th style="width: 44%;">Core Functional Capabilities</th>
+            <th style="width: 20%;">Key Business Stakeholders</th>
+            <th style="width: 14%;">Primary API Scope</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>01 Auth & Access Control</td><td>JWT auth, RBAC effective union, multi-tenant scoping, password lifecycle</td><td>All 24 Roles, Security Admin</td><td>/auth, /users</td></tr>
+          <tr><td>02 Master Data & Structure</td><td>Universities, campuses, departments, programs, batches, academic years</td><td>UnivAdmin, InstAdmin, Registrar</td><td>/master, /departments</td></tr>
+          <tr><td>03 Academics & Timetable</td><td>CBCS / NEP courses, syllabus versions, conflict-free timetable, attendance</td><td>Dean, HOD, Faculty, Students</td><td>/courses, /timetables</td></tr>
+          <tr><td>04 Admissions & Seat Master</td><td>Multi-channel leads, merit list engine, seat matrix, enrollment onboarding</td><td>Admission Approver, Registrar</td><td>/admissions, /seat-master</td></tr>
+          <tr><td>05 Exams & CBE Engine</td><td>Exam scheduling, anonymous codes, admit cards, marks lock, CBE engine</td><td>COE, Evaluators, Students</td><td>/exams, /cbe, /grading</td></tr>
+          <tr><td>06 Fees & Financial Ops</td><td>Fee structures, invoicing, Razorpay dual verify, double-entry ledger, refunds</td><td>Finance Head, Accounts Officer</td><td>/fees, /payments</td></tr>
+          <tr><td>07 Campus Facilities</td><td>Hostel rooms & mess, fleet transit & QR bus passes, RFID library circulation</td><td>Warden, Transport Head, Librarian</td><td>/hostel, /transport</td></tr>
+          <tr><td>08 HR & Faculty Leaves</td><td>Staff profiles, biometric shift logs, multi-tier leave approval, proxy balance</td><td>HR Head, Deans, All Staff</td><td>/hr, /leaves, /staff</td></tr>
+          <tr><td>09 Health & Counselling</td><td>Clinic EHR, prescription dispensing, confidential AES-256 counselling notes</td><td>Medical Officer, Counsellor</td><td>/clinic, /counselling</td></tr>
+          <tr><td>10 Documents & Stock</td><td>Canvas document designer, encrypted QR verify, pre-printed stock tracking</td><td>Document Issuer, Registrar</td><td>/documents, /certificates</td></tr>
+          <tr><td>11 Dynamic Forms & Surveys</td><td>Drag-and-drop form builder, public surveys, NAAC feedback collection</td><td>Accreditation Officer, Deans</td><td>/forms, /surveys</td></tr>
+          <tr><td>12 Workflow & Approvals</td><td>Visual workflow builder, SLA timeout escalation, multi-stage approval chains</td><td>Registrar, Deans, Admin Staff</td><td>/workflows, /approvals</td></tr>
+          <tr><td>13 Governance & Audit</td><td>DLT SMS templates, security policies, tamper-proof audit trail, backup/restore</td><td>SuperAdmin, Compliance Officer</td><td>/governance, /audit-logs</td></tr>
+          <tr><td>14 Institutional Analytics</td><td>Executive Cockpit, real-time enrollment/finance KPIs, NAAC SSR aggregations</td><td>Chancellor, Vice-Chancellor, Dean</td><td>/analytics/exec</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 4 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-5">
+          <div class="slide-header">
+            <span class="pill">STUDENT LIFECYCLE</span>
+            <div class="slide-title">The End-to-End Student Lifecycle Journey: 11 Stages</div>
+            <div class="slide-subtitle">From initial prospect inquiry to alumni status — complete lifecycle governance with automated accountability</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-2x4">
+      <div class="card blue"><div class="card-title">01. Lead Ingestion</div><div class="card-subtitle">Marketing to Inquiry</div><p style="font-size:11px; color:var(--text-body);">Multi-channel capture, UTM attribution, automated CRM scoring.</p></div>
+      <div class="card green"><div class="card-title">02. Scrutiny & Merit</div><div class="card-subtitle">Verification & Offers</div><p style="font-size:11px; color:var(--text-body);">Document verification, 48h defect cure timer, category quota merit list.</p></div>
+      <div class="card amber"><div class="card-title">03. Fee Generation</div><div class="card-subtitle">Structure Billing</div><p style="font-size:11px; color:var(--text-body);">Finance Head assigns fee structure, quota billing, concession deduction.</p></div>
+      <div class="card purple"><div class="card-title">04. Dual-Verify Pay</div><div class="card-subtitle">Razorpay Ledger</div><p style="font-size:11px; color:var(--text-body);">Razorpay checkout, HMAC-SHA256 signature check, double-entry ledger.</p></div>
+      <div class="card rose"><div class="card-title">05. Seat Allocation</div><div class="card-subtitle">Matriculation</div><p style="font-size:11px; color:var(--text-body);">Statutory intake check, batch/section assignment, roll number generation.</p></div>
+      <div class="card indigo"><div class="card-title">06. Academics</div><div class="card-subtitle">Curriculum & Attendance</div><p style="font-size:11px; color:var(--text-body);">CBCS / NEP curriculum, dynamic timetable, biometric attendance (75% rule).</p></div>
+      <div class="card blue"><div class="card-title">07. Exam & CBE</div><div class="card-subtitle">COE Operations</div><p style="font-size:11px; color:var(--text-body);">Anonymous roll numbers, admit cards, marks lock, 3-tier moderation.</p></div>
+      <div class="card green"><div class="card-title">08. Certificate Stock</div><div class="card-subtitle">Secure Credentialing</div><p style="font-size:11px; color:var(--text-body);">Canvas designer, pre-printed serial security paper, tamper-proof vector QR.</p></div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 5 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-6">
+          <div class="slide-header">
+            <span class="pill">ADMISSIONS ENGINE</span>
+            <div class="slide-title">Admissions, Lead Funnel & Seat Master Governance</div>
+            <div class="slide-subtitle">Enforcing statutory approved intake, reservation quotas, and transparent merit list generation</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Lead Funnel & Application</div>
+        <div class="card-subtitle">Inquiry to Application Scrutiny</div>
+        <ul class="card-list">
+          <li><strong>Omnichannel Capture:</strong> Inquiries from website, social ads, education portals, and walk-in front desk.</li>
+          <li><strong>Lead Scoring & Nurturing:</strong> Automated DLT SMS reminders, counselor call logs, and conversion tracking.</li>
+          <li><strong>Application Form Engine:</strong> Dynamic field builder, multi-step validation, and document attachment upload.</li>
+          <li><strong>Application Fee Settlement:</strong> Online application fee collection with instant receipt generation.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Scrutiny & Merit Engine</div>
+        <div class="card-subtitle">Transparent Verification & Selection</div>
+        <ul class="card-list">
+          <li><strong>48h Defect Cure Window:</strong> Scrutiny officer marks deficiencies; applicant gets 48h to upload corrected files.</li>
+          <li><strong>Category Quota Engine:</strong> Automated ranking across General, OBC, SC, ST, EWS, and Institutional Quotas.</li>
+          <li><strong>Normalization & Cutoffs:</strong> Board percentage normalization, entrance exam weighting, tie-breaking rules.</li>
+          <li><strong>Provisional Offer Letters:</strong> Automated generation of admission offers with expiry countdown timers.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Seat Master & Matriculation</div>
+        <div class="card-subtitle">Statutory Intake Compliance</div>
+        <ul class="card-list">
+          <li><strong>Statutory Seat Ceiling:</strong> Hard cap enforcement preventing admissions beyond AICTE/UGC approved intake.</li>
+          <li><strong>Batch & Section Matrix:</strong> Subdividing approved intake into manageable batch sizes and lab sections.</li>
+          <li><strong>Roll Number Allocation:</strong> Automated sequential institutional roll number and matriculation numbering.</li>
+          <li><strong>Statutory XLSX/PDF Export:</strong> Single-click export of statutory seat allotment matrix for regulatory audits.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 6 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-7">
+          <div class="slide-header">
+            <span class="pill">FINANCE & BILLING</span>
+            <div class="slide-title">Fee Structures, Invoicing & Razorpay Integration</div>
+            <div class="slide-subtitle">End-to-end institutional financial operations with dual-verification gateway and double-entry accounting</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Fee Structure Configuration</div>
+        <div class="card-subtitle">Setup by Finance Leadership</div>
+        <ul class="card-list">
+          <li><strong>Finance Head Governance:</strong> Only authorized Finance Officers can configure fee heads and fee structures.</li>
+          <li><strong>Granular Fee Heads:</strong> Tuition, Lab, Library, Hostel, Transport, Examination, Caution Deposit.</li>
+          <li><strong>Cohort-Based Pricing:</strong> Structures assigned by Academic Year, Program, Batch, and Admission Quota.</li>
+          <li><strong>Concessions & Waivers:</strong> Merit scholarships, sibling discounts, and sports quota waiver approvals.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Billing & Payment Gateway</div>
+        <div class="card-subtitle">Razorpay & Cashiering Operations</div>
+        <ul class="card-list">
+          <li><strong>Automated Term Invoicing:</strong> Scheduled fee bill generation with configurable early-bird and late penalty rules.</li>
+          <li><strong>Dual Gateway Verification:</strong> Webhook signature (HMAC-SHA256) check PLUS direct Razorpay API order verify.</li>
+          <li><strong>Omnichannel Cashiering:</strong> Supports online card/UPI/net-banking, offline DD, bank challan, and POS receipts.</li>
+          <li><strong>Reconciliation Engine:</strong> Automated bank settlement reconciliation, chargeback tracking, and refund ledger.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Ledger & Financial Control</div>
+        <div class="card-subtitle">Zero Revenue Leakage Guarantee</div>
+        <ul class="card-list">
+          <li><strong>Double-Entry Accounting:</strong> Every transaction creates paired debit and credit entries ensuring perfect balance.</li>
+          <li><strong>Defaulter Management:</strong> Automated DLT SMS payment reminders, hall ticket holds for chronic defaulters.</li>
+          <li><strong>Late Fee Waiver Audit:</strong> Role-restricted waiver approval workflow with mandatory reason logging.</li>
+          <li><strong>Instant PDF Receipts:</strong> Tamper-proof digital receipts with transaction ID, QR code, and breakdown.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 7 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-8">
+          <div class="slide-header">
+            <span class="pill">ACADEMIC GOVERNANCE</span>
+            <div class="slide-title">Academic Curriculum, CBCS & NEP 2020 Governance</div>
+            <div class="slide-subtitle">Next-gen curriculum structure supporting multi-disciplinary education, credit banking, and flexible electives</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Curriculum & Course Master</div>
+        <div class="card-subtitle">NEP 2020 Multi-Disciplinary Tracks</div>
+        <ul class="card-list">
+          <li><strong>CBCS & NEP Compliance:</strong> Full support for Major, Minor, Open Elective, and Ability Enhancement courses.</li>
+          <li><strong>Credit Framework:</strong> Granular Lecture (L), Tutorial (T), and Practical (P) credit distribution rules.</li>
+          <li><strong>Prerequisite Chains:</strong> Hard and soft prerequisite course validations during student semester registration.</li>
+          <li><strong>Syllabus Versioning:</strong> Academic Council approval workflows for syllabus revisions and course objectives.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Course Enrollment Engine</div>
+        <div class="card-subtitle">Student Self-Service Registration</div>
+        <ul class="card-list">
+          <li><strong>Elective Selection Window:</strong> Configurable student registration windows with real-time seat quota counters.</li>
+          <li><strong>Minimum Enrollment Rules:</strong> Automatic elective consolidation if enrollment falls below minimum threshold.</li>
+          <li><strong>Batch & Lab Partitioning:</strong> Splitting large lecture cohorts into smaller lab sections for hands-on sessions.</li>
+          <li><strong>Credit Ceiling Controls:</strong> Enforcing minimum and maximum semester credit limits per degree regulation.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Timetable Engine</div>
+        <div class="card-subtitle">Optimized Campus Resource Scheduling</div>
+        <ul class="card-list">
+          <li><strong>Conflict-Free Scheduling:</strong> Automated timetable generator preventing faculty, room, and student clashes.</li>
+          <li><strong>Faculty Workload Balancing:</strong> Monitoring weekly teaching hours against statutory UGC/AICTE norms.</li>
+          <li><strong>Room Capacity Optimization:</strong> Matching classroom physical capacity with enrolled cohort sizes.</li>
+          <li><strong>Visual Timetable Grid:</strong> Interactive drag-and-drop grid with real-time collision detection.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 8 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-9">
+          <div class="slide-header">
+            <span class="pill">ATTENDANCE OPERATIONS</span>
+            <div class="slide-title">Student Attendance & Faculty Operations</div>
+            <div class="slide-subtitle">Real-time attendance tracking, statutory 75% rule enforcement, and seamless faculty proxy management</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Attendance Capture Modes</div>
+        <div class="card-subtitle">Multi-Channel Verification</div>
+        <ul class="card-list">
+          <li><strong>1-Click Faculty Marking:</strong> Responsive mobile/tablet UI for fast in-classroom attendance logging.</li>
+          <li><strong>Biometric IoT Integration:</strong> Direct integration with fingerprint and facial recognition turnstiles.</li>
+          <li><strong>Period-Wise vs Daily Mode:</strong> Configurable institutional attendance modes based on program requirements.</li>
+          <li><strong>Late Entry & Tardy Tracking:</strong> Distinguishing between excused absences, unexcused absences, and late arrivals.</li>
+        </ul>
+      </div>
+      <div class="card rose">
+        <div class="card-title">Statutory Enforcement</div>
+        <div class="card-subtitle">UGC 75% Rule & Alerts</div>
+        <ul class="card-list">
+          <li><strong>75% Statutory Rule:</strong> Continuous dynamic calculation of attendance percentages against statutory minimums.</li>
+          <li><strong>Attendance Health Gauge:</strong> Color-coded visual indicator on student and parent portal dashboards.</li>
+          <li><strong>Automated Absentee Alerts:</strong> Instant DLT-compliant SMS notifications sent to parents upon absence.</li>
+          <li><strong>At-Risk Intervention:</strong> Automated escalation of chronic absentees to academic counselors and mentors.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Condonation & Operations</div>
+        <div class="card-subtitle">Workflow-Driven Clearances</div>
+        <ul class="card-list">
+          <li><strong>Medical Condonation Workflow:</strong> Digital medical certificate upload, HOD review, and Dean approval.</li>
+          <li><strong>On-Duty (OD) Attendance:</strong> Automatic attendance credit for authorized sports and cultural representations.</li>
+          <li><strong>Faculty Proxy Management:</strong> Automated proxy assignment when faculty take leave, preventing idle classes.</li>
+          <li><strong>Hall Ticket Debarment:</strong> Automated blocking of exam admit cards for students below threshold.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 9 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-10">
+          <div class="slide-header">
+            <span class="pill">EXAMINATION INTEGRITY</span>
+            <div class="slide-title">Examination Management & Controller of Exams (COE)</div>
+            <div class="slide-subtitle">Guaranteed exam integrity with anonymous barcoded roll numbers, 3-tier moderation, and marks lock</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Exam Operations & Seating</div>
+        <div class="card-subtitle">Admit Cards & Hall Allotment</div>
+        <ul class="card-list">
+          <li><strong>Centralized Exam Scheduling:</strong> Automated exam timetable generation with gap days between major subjects.</li>
+          <li><strong>Seating Arrangement Engine:</strong> Algorithmic desk allotment preventing adjacent students from same branch.</li>
+          <li><strong>Hall Ticket / Admit Card:</strong> Barcode-enabled digital admit cards with photo, venue, and eligibility rules.</li>
+          <li><strong>Fee & Attendance Verification:</strong> Automatic admit card generation only if attendance > 75% and fees cleared.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">Anonymous Code Protection</div>
+        <div class="card-subtitle">Zero Bias Evaluation Firewall</div>
+        <ul class="card-list">
+          <li><strong>Identity Masking Engine:</strong> Student roll numbers replaced with randomized encrypted barcoded codes.</li>
+          <li><strong>Evaluator Blind Grading:</strong> Faculty evaluate physical or digital answer books without knowing student identity.</li>
+          <li><strong>Fictitious Number Decoding:</strong> Only COE master key can decode anonymous marks back to student records.</li>
+          <li><strong>Physical Security Paper:</strong> Barcode stickers printed on tamper-evident synthetic security paper.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Grading & Moderation</div>
+        <div class="card-subtitle">3-Tier Quality Assurance</div>
+        <ul class="card-list">
+          <li><strong>Continuous Assessment (CIA):</strong> Internal tests, assignments, and lab marks locked by Dean prior to end-sem.</li>
+          <li><strong>3-Tier Marks Moderation:</strong> Evaluator Entry -> Department Chief Scrutiny -> COE Board of Examiners Lock.</li>
+          <li><strong>Relative & Absolute Grading:</strong> Configurable grading scales (10-point UGC, percentage, Letter Grades A+ to F).</li>
+          <li><strong>Result Publication Firewall:</strong> Staged result publishing with re-evaluation and retotalling request window.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 10 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-11">
+          <div class="slide-header">
+            <span class="pill">DIGITAL ASSESSMENT</span>
+            <div class="slide-title">Computer-Based Exam (CBE) & Digital Proctoring</div>
+            <div class="slide-subtitle">Secure browser lockdown, Bloom's taxonomy question banks, and automated psychometric evaluation</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card rose">
+        <div class="card-title">Proctored Exam Engine</div>
+        <div class="card-subtitle">Secure Browser Environment</div>
+        <ul class="card-list">
+          <li><strong>Fullscreen Browser Lockdown:</strong> Forced fullscreen mode disabling clipboard, right-click, and developer tools.</li>
+          <li><strong>Tab-Switch Detection:</strong> Real-time logging of focus loss; automated test auto-submission after 3 warnings.</li>
+          <li><strong>Webcam Snapshot Verification:</strong> Periodic random webcam capture to verify candidate presence.</li>
+          <li><strong>Bandwidth Resilient State:</strong> Client-side offline answer caching ensuring zero data loss during network blips.</li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <div class="card-title">Question Bank Psychometrics</div>
+        <div class="card-subtitle">Standardized Item Banking</div>
+        <ul class="card-list">
+          <li><strong>Bloom's Taxonomy Tagging:</strong> Questions categorized by Remember, Understand, Apply, Analyze, Evaluate, Create.</li>
+          <li><strong>Item Difficulty Index (P):</strong> Automated statistical calculation of question pass rate and difficulty level.</li>
+          <li><strong>Discrimination Index (D):</strong> Differentiating high-performing from low-performing students for question curation.</li>
+          <li><strong>Rich Media Support:</strong> Supports LaTeX mathematical formulas, code blocks, diagrams, and audio clips.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Evaluation & Analytics</div>
+        <div class="card-subtitle">Automated Scoring & Insights</div>
+        <ul class="card-list">
+          <li><strong>Instant Auto-Evaluation:</strong> Real-time grading for MCQs, multiple-select, fill-in-blanks, and matching items.</li>
+          <li><strong>Rubrics-Based Subjective:</strong> Standardized rubrics grading for long essays and descriptive case studies.</li>
+          <li><strong>Negative Marking Rules:</strong> Configurable fractional negative marking for competitive entrance exams.</li>
+          <li><strong>Post-Exam Analytics:</strong> Instant question-wise success heatmaps and distractor efficiency reports.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 11 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-12">
+          <div class="slide-header">
+            <span class="pill">CREDENTIAL GOVERNANCE</span>
+            <div class="slide-title">Visual Document Designer & Certificate Stock Security</div>
+            <div class="slide-subtitle">Canvas document creator with anti-counterfeit QR verification and pre-printed security paper serial tracking</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Canvas Document Designer</div>
+        <div class="card-subtitle">WYSIWYG Layout Engine</div>
+        <ul class="card-list">
+          <li><strong>Visual Drag-and-Drop Canvas:</strong> Design degree certificates, provisional certs, grade cards, and bonafide letters.</li>
+          <li><strong>Student Details Pair Layouts:</strong> Flexible field pairing (e.g. Roll No + CGPA, Father Name + DOB).</li>
+          <li><strong>Custom Typography & Borders:</strong> Custom fonts, official university seals, watermarks, and micro-text borders.</li>
+          <li><strong>Reusable Document Templates:</strong> Institutional template repository with role-based editing permissions.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Tokens & Public Verification</div>
+        <div class="card-subtitle">Instant Anti-Counterfeit Validation</div>
+        <ul class="card-list">
+          <li><strong>Dynamic Replacement Tokens:</strong> Instant token injection: {{student.name}}, {{course.title}}, {{exam.cgpa}}.</li>
+          <li><strong>Vector Encrypted QR Codes:</strong> High-density QR containing digitally signed payload for offline verification.</li>
+          <li><strong>Public Verification Portal:</strong> Employers scan QR or visit portal to verify authenticity without logging in.</li>
+          <li><strong>Tamper-Evident Signatures:</strong> Cryptographic hash generated per document preventing retrospective alterations.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Security Paper Stock Tracking</div>
+        <div class="card-subtitle">Zero Certificate Leakage</div>
+        <ul class="card-list">
+          <li><strong>Physical Security Paper Master:</strong> Tracking incoming inventory of watermarked, pre-printed numbered paper.</li>
+          <li><strong>Sequential Serial Allocation:</strong> Mandatory serial number prompt before printing; logs exact sheet used.</li>
+          <li><strong>Damaged Stock Audit Trail:</strong> Requires damaged sheet scan and supervisor reason code for spoilage audit.</li>
+          <li><strong>Issuer Identity Stamping:</strong> Every printed certificate stamped with issuer user ID and exact timestamp.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 12 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-13">
+          <div class="slide-header">
+            <span class="pill">CAMPUS OPERATIONS</span>
+            <div class="slide-title">Campus Facilities: Hostel & Residential Life Management</div>
+            <div class="slide-subtitle">Comprehensive residential governance from room matrix inventory to digital gate passes and curfew logs</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Room Matrix & Inventory</div>
+        <div class="card-subtitle">Bed-Level Inventory Management</div>
+        <ul class="card-list">
+          <li><strong>Multi-Block Hierarchy:</strong> Hostel Block -> Floors -> Rooms -> Beds hierarchy with gender-segregated zones.</li>
+          <li><strong>Room Typologies:</strong> AC, Non-AC, Single, Double, Triple, and Attached-Bathroom room configurations.</li>
+          <li><strong>Real-Time Occupancy Grid:</strong> Color-coded visual bed matrix showing vacant, occupied, and maintenance beds.</li>
+          <li><strong>Automated Room Allocation:</strong> Rules-based bed allocation based on student preference, merit, or seniority.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">Gate Pass & Curfew Governance</div>
+        <div class="card-subtitle">Student Safety & Parent Linkage</div>
+        <ul class="card-list">
+          <li><strong>Digital Gate-Pass Requests:</strong> Student applies for day-out or night-out passes via mobile app.</li>
+          <li><strong>Warden & Parent Dual Approval:</strong> Automated SMS OTP confirmation sent to parents before warden sign-off.</li>
+          <li><strong>Security Gate Biometric Scan:</strong> Campus security guards verify pass QR code at campus entry/exit turnstiles.</li>
+          <li><strong>Curfew Violation Monitoring:</strong> Automated real-time notification to warden for students past curfew hour.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Mess, Damages & No Dues</div>
+        <div class="card-subtitle">Financial & Inventory Settlement</div>
+        <ul class="card-list">
+          <li><strong>Mess Billing & Diet Opt-Out:</strong> Subscription billing for student mess with planned absence fee rebates.</li>
+          <li><strong>Room Inspection & Damages:</strong> Warden room inspection logging; assessed damage charges billed to ledger.</li>
+          <li><strong>Hostel Caution Deposit:</strong> Automated deposit accounting and damage deduction upon vacating room.</li>
+          <li><strong>Automated No Dues Clearance:</strong> Instant digital clearance sign-off if room handed over and dues settled.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 13 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-14">
+          <div class="slide-header">
+            <span class="pill">FLEET LOGISTICS</span>
+            <div class="slide-title">Campus Facilities: Fleet & Transport Logistics Management</div>
+            <div class="slide-subtitle">Real-time fleet tracking, digital QR bus passes, route optimization, and student passenger manifests</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Fleet & Route Management</div>
+        <div class="card-subtitle">Vehicle Master & Capacity</div>
+        <ul class="card-list">
+          <li><strong>Vehicle Master Governance:</strong> Tracking buses, vans, driver licenses, fitness certificates, and insurance expiry.</li>
+          <li><strong>Route & Stop Optimization:</strong> Configurable bus routes, geographic waypoints, and scheduled arrival timings.</li>
+          <li><strong>Seat Capacity Enforcement:</strong> Hard capacity limits preventing overcrowding; automated waitlist for full buses.</li>
+          <li><strong>Fleet Maintenance Logs:</strong> Tracking odometer readings, fuel consumption logs, and periodic service records.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Digital Bus Passes & Safety</div>
+        <div class="card-subtitle">QR Ticketing & Boarding Control</div>
+        <ul class="card-list">
+          <li><strong>Dynamic QR Bus Passes:</strong> Time-expiring encrypted QR pass generated on student mobile app upon fee payment.</li>
+          <li><strong>Conductor Validation App:</strong> Fast offline-capable QR scanner for bus conductors during boarding.</li>
+          <li><strong>Real-Time Passenger Manifest:</strong> Instant attendance logging of which students boarded which bus each morning.</li>
+          <li><strong>Emergency SOS Alerts:</strong> Driver and student panic button sending instant location alerts to security.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Billing & Transport Clearance</div>
+        <div class="card-subtitle">Automated Fee & No Dues Integration</div>
+        <ul class="card-list">
+          <li><strong>Distance-Based Fee Slabs:</strong> Automated fee calculation based on pickup stop distance from university campus.</li>
+          <li><strong>Term Invoicing Integration:</strong> Transport fees integrated seamlessly into student master fee ledger.</li>
+          <li><strong>Temporary Route Change:</strong> Self-service requests for temporary stop changes during exams or internships.</li>
+          <li><strong>Transport No Dues Sign-Off:</strong> Automated transport clearance upon pass surrender and zero fee arrears.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 14 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-15">
+          <div class="slide-header">
+            <span class="pill">LIBRARY AUTOMATION</span>
+            <div class="slide-title">Campus Facilities: Library & Resource Center (RFID)</div>
+            <div class="slide-subtitle">Marc21 cataloging, RFID self-service circulation, automated overdue fine accounting, and digital repositories</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Bibliographic Cataloging</div>
+        <div class="card-subtitle">Standardized Library Inventory</div>
+        <ul class="card-list">
+          <li><strong>Marc21 / Dublin Core Cataloging:</strong> International standard bibliographic metadata and Dewey decimal classification.</li>
+          <li><strong>Multi-Copy Accessioning:</strong> Individual barcode and RFID tag encoding for every physical copy on shelves.</li>
+          <li><strong>E-Book & Journal Repositories:</strong> Digital asset management, publisher link integration, and Open Access catalogs.</li>
+          <li><strong>Departmental Sub-Libraries:</strong> Centralized inventory tracking across departmental seminar libraries.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">RFID Circulation Operations</div>
+        <div class="card-subtitle">Self-Service Kiosks & Gates</div>
+        <ul class="card-list">
+          <li><strong>RFID Self-Checkout Kiosk:</strong> Students scan student ID and place multiple books on RFID pad for instant issue.</li>
+          <li><strong>Smart Book Drop Station:</strong> Automated book return chute with RFID detection and instant check-in confirmation.</li>
+          <li><strong>Anti-Theft RFID Security Gates:</strong> Audible alarm and security alerts if unissued books pass through library gates.</li>
+          <li><strong>Circulation Rules Engine:</strong> Configurable loan periods and borrowing limits by role (Student, Faculty, Scholar).</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Overdue Fines & Clearance</div>
+        <div class="card-subtitle">Fines, Reservations & No Dues</div>
+        <ul class="card-list">
+          <li><strong>Automated Daily Fine Ledger:</strong> Daily automated cron job calculating overdue fines against student accounts.</li>
+          <li><strong>Book Hold & Reservation Queue:</strong> Automated notification to student when reserved book is checked back in.</li>
+          <li><strong>Lost Book Replacement Fee:</strong> Replacement cost plus administrative processing charge billed to ledger.</li>
+          <li><strong>Instant Library No Dues:</strong> Automated clearance sign-off if all books returned and zero outstanding fines.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 15 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-16">
+          <div class="slide-header">
+            <span class="pill">HUMAN RESOURCES</span>
+            <div class="slide-title">Human Resources, Faculty & Leave Governance</div>
+            <div class="slide-subtitle">Complete faculty lifecycle, biometric shift scheduling, multi-tier leave approval, and proxy class arrangement</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Faculty & Staff Master</div>
+        <div class="card-subtitle">Comprehensive Profile Governance</div>
+        <ul class="card-list">
+          <li><strong>Comprehensive Staff Master:</strong> Faculty ranks (Professor, Associate, Assistant), contracts, and pay scales.</li>
+          <li><strong>Academic Credentials Vault:</strong> PhD thesis titles, UGC NET/SET scores, publications, and patent filings.</li>
+          <li><strong>Statutory Faculty Ratios:</strong> Automated monitoring of Student-to-Faculty Ratio (SFR) for NAAC & NBA compliance.</li>
+          <li><strong>Service Book & Experience:</strong> Digital service record tracking promotions, awards, and disciplinary history.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Shifts & Biometric Tracking</div>
+        <div class="card-subtitle">Accurate Time & Attendance</div>
+        <ul class="card-list">
+          <li><strong>Biometric Shift Synchronization:</strong> Direct sync with biometric turnstiles for in/out shift recording.</li>
+          <li><strong>Flexible Shift Configurations:</strong> Configurable morning, general, and evening shifts with grace periods.</li>
+          <li><strong>Late Entry & Overtime Rules:</strong> Automated tracking of half-day cuts and overtime allowances.</li>
+          <li><strong>Monthly Payroll Attendance:</strong> Export of verified monthly work hours directly into institutional payroll.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Leave Engine & Proxy Workflows</div>
+        <div class="card-subtitle">Zero Disrupted Classrooms</div>
+        <ul class="card-list">
+          <li><strong>Configurable Leave Quotas:</strong> Casual (CL), Sick (SL), Earned (EL), Duty (DL), and Sabbatical leave quotas.</li>
+          <li><strong>Multi-Stage Approval Hierarchy:</strong> Applicant -> HOD Review -> Dean Recommendation -> HR Approval.</li>
+          <li><strong>Mandatory Class Proxy Arrangement:</strong> Faculty must assign substitute teaching colleagues before leave submission.</li>
+          <li><strong>Leave Encashment & Carryover:</strong> Automated annual leave balance rollovers and encashment calculations.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 16 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-17">
+          <div class="slide-header">
+            <span class="pill">STUDENT WELFARE</span>
+            <div class="slide-title">Campus Health Clinic, Counselling & Student Welfare</div>
+            <div class="slide-subtitle">Confidential AES-256 encrypted psychological counselling notes, clinic EHR, and student mentorship</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card rose">
+        <div class="card-title">Campus Health Clinic</div>
+        <div class="card-subtitle">Primary Care & Medical Records</div>
+        <ul class="card-list">
+          <li><strong>Electronic Health Record (EHR):</strong> Student and staff outpatient visits, medical history, and allergy warnings.</li>
+          <li><strong>Pharmacy Dispensing Ledger:</strong> Campus clinic medicine inventory tracking and prescription dispensing logs.</li>
+          <li><strong>Emergency Dispatch Integration:</strong> Direct link to campus ambulance, local hospitals, and parent emergency SMS.</li>
+          <li><strong>Medical Certificate Issuance:</strong> Digital issuance of clinic rest slips linked to attendance condonation.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">Psychological Counselling</div>
+        <div class="card-subtitle">Encrypted Mental Health Support</div>
+        <ul class="card-list">
+          <li><strong>Zero-Knowledge AES-256 Encryption:</strong> Counselling session notes encrypted at column level; inaccessible even to DBAs.</li>
+          <li><strong>Confidential Appointment Booking:</strong> Students can book confidential appointments without revealing reason to staff.</li>
+          <li><strong>Mental Wellness Assessments:</strong> Periodic standardized screening (PHQ-9, GAD-7) for early stress intervention.</li>
+          <li><strong>Anonymized Crisis Escalation:</strong> Emergency high-risk flags alerting Dean of Student Welfare without breach.</li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <div class="card-title">Mentorship & Grievance Governance</div>
+        <div class="card-subtitle">Statutory Student Welfare</div>
+        <ul class="card-list">
+          <li><strong>Faculty Mentorship System:</strong> Cohorts of 15-20 students assigned to faculty mentors for holistic guidance.</li>
+          <li><strong>Anti-Ragging Committee Logs:</strong> Statutory UGC anti-ragging compliance, affidavit tracking, and incident logging.</li>
+          <li><strong>Grievance Redressal Portal:</strong> Transparent grievance submission, committee review, and resolution SLAs.</li>
+          <li><strong>Equal Opportunity Cell:</strong> Monitoring assistance and scholarships for differently-abled and minority students.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 17 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-18">
+          <div class="slide-header">
+            <span class="pill">EXIT GOVERNANCE</span>
+            <div class="slide-title">Student Exit Governance & 5-Department 'No Dues' Clearance</div>
+            <div class="slide-subtitle">Rigorous multi-department clearance workflow ensuring zero institutional loss prior to student departure</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Operational Clearances (1-3)</div>
+        <div class="card-subtitle">Physical Asset & Key Return</div>
+        <ul class="card-list">
+          <li><strong>Library Clearance (Dept 1):</strong> Validates all borrowed books returned and zero outstanding fine ledger balances.</li>
+          <li><strong>Hostel Warden Clearance (Dept 2):</strong> Validates room physical inspection, keys handed over, and damage dues paid.</li>
+          <li><strong>Transport Fleet Clearance (Dept 3):</strong> Validates bus pass cancellation and zero outstanding transport fee balances.</li>
+          <li><strong>Department HOD Clearance:</strong> Validates lab locker clearance, project equipment return, and seminar sign-off.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Finance & Registrar Final Lock</div>
+        <div class="card-subtitle">Financial Balance & Final Sign-Off</div>
+        <ul class="card-list">
+          <li><strong>Accounts & Finance (Dept 4):</strong> Audit of master ledger: tuition fees, hostel fees, fines, and caution deposits.</li>
+          <li><strong>Caution Deposit Refund:</strong> Automated refund voucher generation after netting off assessed damage charges.</li>
+          <li><strong>Registrar Final Sign-Off (Dept 5):</strong> Unlocks TC, Migration Certificate, and final Degree Certificate upon all sign-offs.</li>
+          <li><strong>Automated Hold Placements:</strong> Any departmental rejection immediately blocks certificate generation system-wide.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Course Cancellation / Withdrawal</div>
+        <div class="card-subtitle">15-Day Reversible Deactivation</div>
+        <ul class="card-list">
+          <li><strong>Formal Cancellation Flow:</strong> Student raises withdrawal request; requires parent consent and exit interview.</li>
+          <li><strong>Dean Scrutiny & Comment:</strong> Dean reviews justification, discusses retention options, and submits remarks.</li>
+          <li><strong>Registrar Approval & Grace Period:</strong> Approval sets 15-day deactivation grace period during which action is reversible.</li>
+          <li><strong>Automated Ledger Refund:</strong> Pro-rata tuition refund calculated based on UGC cancellation refund schedule.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 18 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-19">
+          <div class="slide-header">
+            <span class="pill">DEGREE & ALUMNI</span>
+            <div class="slide-title">Degree Conferral, National Repositories & Alumni Network</div>
+            <div class="slide-subtitle">Automated convocation gazettes, DigiLocker / APAAR federation, and lifelong alumni engagement</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Degree Conferral & Convocation</div>
+        <div class="card-subtitle">Senate Gazette & Honors</div>
+        <ul class="card-list">
+          <li><strong>Degree Gazette Publication:</strong> Official senate-approved degree gazette with CGPA, division, and honors roll.</li>
+          <li><strong>Convocation Seating & Tokens:</strong> Managing convocation guest registrations, robes issuance, and stage tokens.</li>
+          <li><strong>Bilingual Certificate Generation:</strong> Automated generation of degrees in English and official state/Hindi languages.</li>
+          <li><strong>Transcript Issuance Portal:</strong> Official authenticated transcripts sent directly to overseas universities via WES.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">DigiLocker, ABC & APAAR</div>
+        <div class="card-subtitle">National Statutory Federation</div>
+        <ul class="card-list">
+          <li><strong>National Academic Depository (NAD):</strong> Direct API sync pushing student degrees to Government of India NAD portal.</li>
+          <li><strong>DigiLocker Integration:</strong> Graduates access verifiable digital certificates instantly via their DigiLocker app.</li>
+          <li><strong>Academic Bank of Credits (ABC):</strong> Automated credit balance push to student APAAR / ABC identity account.</li>
+          <li><strong>Global Verification API:</strong> Authorized background verification agencies query credentials via secure API.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Lifelong Alumni Network</div>
+        <div class="card-subtitle">Endowment & Mentorship Ecosystem</div>
+        <ul class="card-list">
+          <li><strong>Alumni Directory & Portal:</strong> Graduates retain lifelong portal access with personal non-university email logins.</li>
+          <li><strong>Mentorship & Placement Network:</strong> Alumni offer internships, job referrals, and career webinars to current students.</li>
+          <li><strong>Endowment & Donation Tracking:</strong> Fundraising campaigns, scholarship endowments, and 80G tax receipt issuance.</li>
+          <li><strong>Alumni Chapters & Reunions:</strong> Managing regional alumni chapter events, election voting, and newsletters.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 19 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-20">
+          <div class="slide-header">
+            <span class="pill">ROLE GOVERNANCE</span>
+            <div class="slide-title">Master Roles & Permissions Governance: 24 System Roles</div>
+            <div class="slide-subtitle">Fine-grained role-based access control with effective union evaluation and multi-tenant boundary isolation</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 20%;">Persona Tier</th>
+            <th style="width: 28%;">Specific System Roles</th>
+            <th style="width: 32%;">Core Governance Scope</th>
+            <th style="width: 20%;">Write Boundaries & Guards</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1. Executive Leadership</td><td>SuperAdmin, UnivAdmin, InstAdmin</td><td>Multi-tenant setup, institutions, campuses, global settings, audit logs</td><td>Full Write on respective tenant; SuperAdmin has cross-tenant scope</td></tr>
+          <tr><td>2. Academic Leadership</td><td>Registrar, COE, Dean, HOD, Faculty</td><td>Matriculation, curricula, exam timetables, marks locking, daily attendance</td><td>Restricted to assigned Academic Entity; Faculty restricted to active courses</td></tr>
+          <tr><td>3. Finance & Logistics</td><td>Finance Head, Accounts Officer, Warden, Transport, Librarian</td><td>Fee structures, cashiering, hostel rooms, bus routes, library RFID desk</td><td>Finance restricted to ledger; Facilities restricted to asset inventories</td></tr>
+          <tr><td>4. Specialized Officers</td><td>Admission Approver, Document Issuer, Results Publisher, QuestionBank Approver</td><td>Application scrutiny, canvas certificate printing, exam grading, item curation</td><td>Workflow stage restricted; Document Issuer restricted to assigned stock</td></tr>
+          <tr><td>5. Health & Welfare</td><td>Campus Doctor, Psychological Counsellor, Welfare Officer</td><td>Outpatient clinic EHR, confidential counselling notes, anti-ragging logs</td><td>Zero-knowledge encryption for Counsellor; strict medical confidentiality</td></tr>
+          <tr><td>6. End Users</td><td>Applicant, Student, Parent, Alumni</td><td>Application forms, course registration, fee payment, bus pass, credential verification</td><td>Self-scoped only (id == req.user.id); Parent linked to student record</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 20 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-21">
+          <div class="slide-header">
+            <span class="pill">SECURITY ARCHITECTURE</span>
+            <div class="slide-title">Zero-Trust Security, Multi-Tenant Isolation & Audit Trails</div>
+            <div class="slide-subtitle">Enterprise-grade defense-in-depth security protecting institutional records and personal data</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Authentication & Tokens</div>
+        <div class="card-subtitle">Stateless & Secure Sessions</div>
+        <ul class="card-list">
+          <li><strong>JWT Stateless Tokens:</strong> Short-lived access tokens (15m) paired with HttpOnly refresh tokens.</li>
+          <li><strong>Argon2id Password Hashing:</strong> State-of-the-art cryptographic password hashing resisting GPU cracking.</li>
+          <li><strong>Session Invalidation Engine:</strong> Instant session revocation upon password reset or security compromise.</li>
+          <li><strong>Brute-Force Rate Limiting:</strong> Redis-backed rate limiters on login and OTP verification endpoints.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Multi-Tenant Isolation</div>
+        <div class="card-subtitle">Strict Row-Level Partitioning</div>
+        <ul class="card-list">
+          <li><strong>Row-Level Tenant Isolation:</strong> Tenant and institution IDs injected into every Prisma query execution.</li>
+          <li><strong>Zero Cross-Tenant Leakage:</strong> Strict logical isolation guaranteeing university data privacy.</li>
+          <li><strong>Granular Module Guards:</strong> Requests checked against user's effective roles union (roles.util.ts).</li>
+          <li><strong>Write Guard Verification:</strong> Read-only enforcement during fee freeze or marks lock windows.</li>
+        </ul>
+      </div>
+      <div class="card rose">
+        <div class="card-title">Audit Logs & Cryptography</div>
+        <div class="card-subtitle">Immutable Accountability</div>
+        <ul class="card-list">
+          <li><strong>Tamper-Proof Audit Logging:</strong> Every mutating HTTP action logged with Actor, IP, User-Agent, and Timestamp.</li>
+          <li><strong>Before / After Diffs:</strong> Deep JSON diffs of database state recorded for all financial and grading changes.</li>
+          <li><strong>AES-256 Field Encryption:</strong> Sensitive counselling notes and payment credentials encrypted at rest.</li>
+          <li><strong>SOC 2 / ISO 27001 Ready:</strong> Audit trails exported for annual enterprise compliance certifications.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 21 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-22">
+          <div class="slide-header">
+            <span class="pill">INTEGRATIONS ARCHITECTURE</span>
+            <div class="slide-title">Statutory Gateways & External Integrations Architecture</div>
+            <div class="slide-subtitle">Seamless integration with national statutory portals, telecom DLT gateways, banking, and IoT hardware</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-4">
+      <div class="card blue">
+        <div class="card-title">1. FinTech: Razorpay</div>
+        <div class="card-subtitle">Banking & Payments</div>
+        <ul class="card-list">
+          <li><strong>Payment Processing:</strong> Orders API, Checkout SDK, and Subscriptions.</li>
+          <li><strong>Webhook Dual Verify:</strong> HMAC-SHA256 signature verification on event.</li>
+          <li><strong>Reconciliation:</strong> Server-to-server query confirms bank capture.</li>
+          <li><strong>Idempotent Ops:</strong> UUID key prevents duplicate billing.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">2. Telecom: TRAI DLT</div>
+        <div class="card-subtitle">SMS Gateway Engine</div>
+        <ul class="card-list">
+          <li><strong>TRAI Compliance:</strong> Principal Entity ID & Sender IDs.</li>
+          <li><strong>Approved Templates:</strong> DLT registered SMS text with tokens.</li>
+          <li><strong>Priority Routing:</strong> Transactional route for auth OTPs.</li>
+          <li><strong>Delivery Telemetry:</strong> Real-time carrier delivery status logs.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">3. National Repositories</div>
+        <div class="card-subtitle">DigiLocker & ABC</div>
+        <ul class="card-list">
+          <li><strong>NAD Push:</strong> Conferred degrees pushed to national depository.</li>
+          <li><strong>DigiLocker Pull:</strong> Students fetch credentials directly via app.</li>
+          <li><strong>APAAR / ABC:</strong> Academic credit balances synced.</li>
+          <li><strong>Standard Schemas:</strong> Meets National Academic Exchange norms.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">4. IoT & Cloud Storage</div>
+        <div class="card-subtitle">Hardware & Object Store</div>
+        <ul class="card-list">
+          <li><strong>Biometric Gates:</strong> IoT gateways for fingerprint & face gates.</li>
+          <li><strong>AWS S3 / MinIO:</strong> Pre-signed URLs for secure document storage.</li>
+          <li><strong>GPS Telematics:</strong> Bus GPS trackers sending real-time coordinates.</li>
+          <li><strong>RFID Readers:</strong> High-frequency RFID readers for library kiosks.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 22 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-23">
+          <div class="slide-header">
+            <span class="pill">DATA ARCHITECTURE</span>
+            <div class="slide-title">Relational Database Architecture: 138 Models across 10 Clusters</div>
+            <div class="slide-subtitle">PostgreSQL 16 relational data topology mapped via Prisma ORM with strict referential integrity</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 22%;">Functional Cluster</th>
+            <th style="width: 14%;">Prisma Models</th>
+            <th style="width: 38%;">Representative Core Entities</th>
+            <th style="width: 26%;">Referential Integrity & Constraints</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1. Auth & Access Control</td><td>12 Models</td><td>User, Role, UserRole, Permission, Session, AuditLog, RefreshToken</td><td>Cascade deletes on sessions; User soft-delete flags</td></tr>
+          <tr><td>2. Master Structure</td><td>14 Models</td><td>University, Campus, Department, Program, AcademicYear, Term, Batch</td><td>Strict hierarchical foreign keys (Univ -> Campus -> Dept)</td></tr>
+          <tr><td>3. Admissions & Leads</td><td>15 Models</td><td>Lead, Application, AdmissionQuota, MeritList, ScrutinyRecord, SeatMatrix</td><td>Unique constraints on ApplicationNumber and Email/Phone</td></tr>
+          <tr><td>4. Academics & Timetable</td><td>20 Models</td><td>Course, CourseVersion, Prerequisite, Timetable, TimetableSlot, Attendance</td><td>Unique slot constraints preventing room & faculty collisions</td></tr>
+          <tr><td>5. Examinations & CBE</td><td>18 Models</td><td>ExamSchedule, AdmitCard, AnonymousCode, CIAMark, Question, CBEAttempt</td><td>Immutable marks once locked; AnonymousCode salted mapping</td></tr>
+          <tr><td>6. Fees & Financial Ops</td><td>16 Models</td><td>FeeStructure, FeeHead, Invoice, Payment, TransactionLedger, Refund</td><td>Double-entry balance verification; zero negative balances</td></tr>
+          <tr><td>7. Campus Logistics</td><td>15 Models</td><td>HostelBlock, Room, Bed, GatePass, BusRoute, Vehicle, Book, BorrowRecord</td><td>Bed occupancy status machine; RFID accession unique indexes</td></tr>
+          <tr><td>8. HR & Faculty Leaves</td><td>12 Models</td><td>StaffProfile, StaffShift, LeaveBalance, LeaveRequest, ProxyArrangement</td><td>Leave deduction atomic transactions; shift overlap checks</td></tr>
+          <tr><td>9. Health & Welfare</td><td>6 Models</td><td>ClinicVisit, Prescription, CounsellingCase, MentorshipCohort, Grievance</td><td>AES-256 encrypted confidential notes; zero foreign key leaks</td></tr>
+          <tr><td>10. Documents & Forms</td><td>10 Models</td><td>DocumentTemplate, CertificateStock, DynamicForm, FormResponse, DltTemplate</td><td>Pre-printed serial number unique index; stock damaged audits</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 23 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-24">
+          <div class="slide-header">
+            <span class="pill">BACKEND ARCHITECTURE</span>
+            <div class="slide-title">Backend API Architecture: 71 Controllers across 43 Modules</div>
+            <div class="slide-subtitle">NestJS enterprise service catalog with standard REST verbs, class-validator DTOs, and OpenAPI docs</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Design Standards & Contracts</div>
+        <div class="card-subtitle">Predictable RESTful Endpoints</div>
+        <ul class="card-list">
+          <li><strong>Standard RESTful Verbs:</strong> Uniform resource endpoints: GET (query), POST (create), PUT/PATCH (update), DELETE.</li>
+          <li><strong>Strict DTO Validation:</strong> Every incoming payload validated by NestJS ValidationPipe using class-validator.</li>
+          <li><strong>OpenAPI / Swagger 3.0:</strong> Complete interactive API documentation generated automatically at /api/docs.</li>
+          <li><strong>Idempotency Keys:</strong> Financial and registration endpoints enforce UUID idempotency keys to prevent repeats.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Service & Business Logic Layer</div>
+        <div class="card-subtitle">Modular Monolith Architecture</div>
+        <ul class="card-list">
+          <li><strong>Decoupled NestJS Modules:</strong> 43 isolated modules ensuring clean separation of concerns and maintainability.</li>
+          <li><strong>Dependency Injection (DI):</strong> Service layers injected via DI tokens, enabling painless unit and e2e testing.</li>
+          <li><strong>Database Transaction Boundaries:</strong> All multi-table mutations wrapped in atomic prisma.$transaction blocks.</li>
+          <li><strong>Event-Driven Side Effects:</strong> Asynchronous events trigger DLT SMS, emails, and audit logs without latency.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Resilience & Cross-Cutting</div>
+        <div class="card-subtitle">Filters, Interceptors & Telemetry</div>
+        <ul class="card-list">
+          <li><strong>Unified Exception Filter:</strong> Standard error envelope { statusCode, message, timestamp, path } across all errors.</li>
+          <li><strong>Response Serialization:</strong> Interceptors strip out internal database fields and password hashes before return.</li>
+          <li><strong>Performance Telemetry:</strong> Logging interceptor records execution duration (ms) for slow query optimization.</li>
+          <li><strong>Rate Limiting Throttler:</strong> DDoS mitigation and IP-based request throttling on public endpoints.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 24 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-25">
+          <div class="slide-header">
+            <span class="pill">FRONTEND ARCHITECTURE</span>
+            <div class="slide-title">Frontend Architecture & User Experience: 49 React Pages</div>
+            <div class="slide-subtitle">Modern React 18 single-page application engineered for high-density academic operations and speed</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Core Architecture & Routing</div>
+        <div class="card-subtitle">Single-Page Application (SPA)</div>
+        <ul class="card-list">
+          <li><strong>React 18 & Vite Tooling:</strong> Sub-second hot module replacement (HMR) and lightning-fast production bundles.</li>
+          <li><strong>Dynamic Breadcrumb Routing:</strong> React Router v6 with hierarchical pathing reflecting academic structures.</li>
+          <li><strong>Role-Scoped Navigation:</strong> Sidebar menus dynamically rendered based on user's active permissions union.</li>
+          <li><strong>Responsive Layout Engine:</strong> Tailwind CSS responsive design supporting high-res desktops, laptops, and tablets.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">Specialized UI Engines</div>
+        <div class="card-subtitle">Interactive Academic Tools</div>
+        <ul class="card-list">
+          <li><strong>Canvas Document Designer:</strong> Visual drag-and-drop certificate layout engine with real-time vector preview.</li>
+          <li><strong>Interactive Seat Matrix:</strong> Live quota capacity grids with instant XLSX/PDF export and batch row filters.</li>
+          <li><strong>Page-Level Gear Modals:</strong> Dedicated modal configuration gear (e.g. Fees page gateway settings).</li>
+          <li><strong>Drag-and-Drop Timetable:</strong> Visual slot allocation matrix with collision prevention and teacher load gauges.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Performance & Micro-Interactions</div>
+        <div class="card-subtitle">Snappy Institutional Operations</div>
+        <ul class="card-list">
+          <li><strong>Optimistic UI Updates:</strong> Immediate visual feedback on status changes with background rollback on failure.</li>
+          <li><strong>Accessible Data Tables:</strong> Client/server pagination (5/10/20/50 rows), multi-column sorting, and filters.</li>
+          <li><strong>Toast Feedback System:</strong> Non-intrusive green/red/amber toast alerts for all mutating actions.</li>
+          <li><strong>Zero Client Memory Leaks:</strong> Strict cleanup in useEffect hooks and memoized calculations with useMemo.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 25 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-26">
+          <div class="slide-header">
+            <span class="pill">DATA MIGRATION SUITE</span>
+            <div class="slide-title">Enterprise Data Migration & Bulk Ingestion Engine</div>
+            <div class="slide-subtitle">Strict 10-level topological dependency graph (DAG) and 4-way field dictionary ensuring zero foreign key errors</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">10-Level Topological DAG</div>
+        <div class="card-subtitle">Zero Foreign Key Violations</div>
+        <ul class="card-list">
+          <li><strong>Level 1-2: Foundation:</strong> Academic Years, Campuses, Departments, Faculties.</li>
+          <li><strong>Level 3-4: Curricular Structure:</strong> Degree Programs, Semesters, Course Master, Fee Heads.</li>
+          <li><strong>Level 5-6: Personnel & Cohorts:</strong> Staff Master, Batches, Sections, Fee Structures.</li>
+          <li><strong>Level 7-8: Students & Invoicing:</strong> Student Profiles, Parent Links, Term Invoices.</li>
+          <li><strong>Level 9-10: Academic Execution:</strong> Course Enrollments, Timetable Slots, Historical Marks.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Bulk Ingestion & Validation</div>
+        <div class="card-subtitle">Automated Quality Gates</div>
+        <ul class="card-list">
+          <li><strong>Pre-Formatted CSV/XLSX Schemas:</strong> Standardized downloadable templates with column data types and examples.</li>
+          <li><strong>Staging Buffer Tables:</strong> Incoming data loaded into staging tables for validation before production insertion.</li>
+          <li><strong>Dry-Run Validation Engine:</strong> Identifies duplicate emails, invalid phone formats, and missing prerequisites.</li>
+          <li><strong>Detailed Error Reports:</strong> Generates downloadable error spreadsheets highlighting exact row and column faults.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">4-Way Field Mapping Dictionary</div>
+        <div class="card-subtitle">Universal Field Rosetta Stone</div>
+        <ul class="card-list">
+          <li><strong>Legacy CSV Column:</strong> Maps legacy database column headers (e.g. STUD_DOB, ENR_NUM).</li>
+          <li><strong>Admin UI Input Field:</strong> Maps corresponding field on React administrative portal forms.</li>
+          <li><strong>Backend API DTO:</strong> Maps TypeScript validation DTO property with type decorators.</li>
+          <li><strong>Prisma Database Column:</strong> Maps target PostgreSQL column name and relational foreign key.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 26 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-27">
+          <div class="slide-header">
+            <span class="pill">GO-LIVE RUNBOOK</span>
+            <div class="slide-title">30-Day Institutional Cutover & Go-Live Playbook</div>
+            <div class="slide-subtitle">Proven enterprise implementation methodology ensuring smooth cutover, operational readiness, and zero downtime</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">T-30 to T-5: Preparation & UAT</div>
+        <div class="card-subtitle">Data Cleansing & Role Training</div>
+        <ul class="card-list">
+          <li><strong>T-30 to T-20: Data Audit:</strong> Extracting legacy datasets, resolving orphan records, standardizing student records.</li>
+          <li><strong>T-19 to T-15: Pilot Dry Run:</strong> Executing full 10-level DAG ingestion into Staging environment for verification.</li>
+          <li><strong>T-14 to T-10: End-to-End Testing:</strong> Stakeholder user acceptance testing (UAT) across Admissions, Fees, and Exams.</li>
+          <li><strong>T-9 to T-5: Role-Based Training:</strong> Hands-on workshop training for Deans, HODs, Cashiers, Wardens, and Faculty.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Cutover Weekend Timeline</div>
+        <div class="card-subtitle">Hour-by-Hour Execution Plan</div>
+        <ul class="card-list">
+          <li><strong>Friday 18:00 (Freeze):</strong> Legacy ERP placed in read-only mode; final database snapshot taken.</li>
+          <li><strong>Saturday 06:00 (Delta Load):</strong> Automated delta ETL script ingests recent transactions into UniversityERP.</li>
+          <li><strong>Saturday 18:00 (Audit Recon):</strong> Finance Head and Registrar sign off on ledger balance and student enrollments.</li>
+          <li><strong>Sunday 12:00 (DNS Switch):</strong> Domain routing switched to production cluster; health checks validated.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">T+1 to T+7: Stabilization & Sign-Off</div>
+        <div class="card-subtitle">War Room & Steady State</div>
+        <ul class="card-list">
+          <li><strong>Day 1: On-Site War Room:</strong> Dedicated architecture and support engineers on campus assisting staff.</li>
+          <li><strong>Dual-Running Reconciliation:</strong> Daily cross-checks between bank deposits and cashiering collections.</li>
+          <li><strong>T+7: Final Acceptance:</strong> Steering committee formal sign-off; legacy ERP servers decommissioned.</li>
+          <li><strong>Emergency Rollback Plan:</strong> Pre-tested fallback runbook in case of critical unrecoverable failure.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 27 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-28">
+          <div class="slide-header">
+            <span class="pill">STATUTORY COMPLIANCE</span>
+            <div class="slide-title">Accreditation Intelligence & Statutory Compliance (NAAC, NBA, NEP)</div>
+            <div class="slide-subtitle">Built-in compliance automation providing quantitative evidence for NAAC SSR, NBA OBE, and NIRF rankings</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">National Education Policy (NEP 2020)</div>
+        <div class="card-subtitle">Curricular Flexibility & Credits</div>
+        <ul class="card-list">
+          <li><strong>Multiple Entry / Exit Points:</strong> Certificates (Year 1), Diplomas (Year 2), Degrees (Year 3), Honors (Year 4).</li>
+          <li><strong>Academic Bank of Credits (ABC):</strong> Automated credit logging and seamless credit transfer across institutions.</li>
+          <li><strong>Multi-Disciplinary Curricula:</strong> Support for major/minor tracks, vocational training, and internship credits.</li>
+          <li><strong>Indian Knowledge Systems (IKS):</strong> Categorization of indigenous knowledge courses and community engagement.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">NAAC SSR Accreditation Suite</div>
+        <div class="card-subtitle">Criteria 1-7 Automated Metrics</div>
+        <ul class="card-list">
+          <li><strong>Criteria 1-7 Evidence Engine:</strong> Automated aggregation of student data, teaching loads, and infrastructure.</li>
+          <li><strong>Criterion 2: Teaching-Learning:</strong> Real-time calculation of student-to-faculty ratios, mentor ratios, and pass rates.</li>
+          <li><strong>Criterion 5: Student Support:</strong> Automated tracking of scholarships, competitive exam coaching, and placements.</li>
+          <li><strong>One-Click SSR Metric Export:</strong> Generates quantitative Excel spreadsheets strictly conforming to NAAC portal.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">NBA Accreditation & OBE Attainment</div>
+        <div class="card-subtitle">CO-PO Attainment Calculation</div>
+        <ul class="card-list">
+          <li><strong>Outcome-Based Education (OBE):</strong> Mapping Course Outcomes (COs) to Program Outcomes (POs) and PSOs.</li>
+          <li><strong>Direct Attainment Engine:</strong> Calculates attainment thresholds from internal tests, quizzes, and end-sem exams.</li>
+          <li><strong>Indirect Attainment Surveys:</strong> Course-end surveys and graduate exit surveys feeding into indirect attainment.</li>
+          <li><strong>Continuous Quality Improvement:</strong> Automated gap analysis reports for department curriculum review boards.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 28 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-29">
+          <div class="slide-header">
+            <span class="pill">EXECUTIVE INTELLIGENCE</span>
+            <div class="slide-title">Institutional Analytics & Executive Cockpit (Module 14)</div>
+            <div class="slide-subtitle">Real-time decision intelligence for Chancellors, Vice-Chancellors, Trustees, and Academic Deans</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">Executive KPI Cockpit</div>
+        <div class="card-subtitle">Top-Level Institutional Health</div>
+        <ul class="card-list">
+          <li><strong>Chancellor / VC Cockpit:</strong> High-level visual summary of total enrollment, revenue collection, and pass rates.</li>
+          <li><strong>Admissions Conversion Funnel:</strong> Real-time tracking of leads -> applications -> scrutinies -> paid enrollments.</li>
+          <li><strong>Fee Collection Velocity:</strong> Daily collection rates compared against target schedules and past fiscal years.</li>
+          <li><strong>Seat Utilization Heatmap:</strong> Branch-wise seat filling percentage highlighting under-subscribed courses.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Comparative Academic Analytics</div>
+        <div class="card-subtitle">Campus & Department Performance</div>
+        <ul class="card-list">
+          <li><strong>Multi-Campus Benchmarking:</strong> Compare academic performance, attendance, and revenue across campus sites.</li>
+          <li><strong>Departmental Scorecards:</strong> Faculty research output, student satisfaction ratings, and budget utilization.</li>
+          <li><strong>Course Pass Rate Outliers:</strong> Automated anomaly detection flagging abnormally high failure or scoring rates.</li>
+          <li><strong>Placement Analytics:</strong> Tracking placement offers, average salary packages, and top corporate recruiters.</li>
+        </ul>
+      </div>
+      <div class="card amber">
+        <div class="card-title">Predictive Alerts & Forecasting</div>
+        <div class="card-subtitle">Proactive Institutional Strategy</div>
+        <ul class="card-list">
+          <li><strong>Student Dropout Early Warning:</strong> Machine learning heuristic identifying students with low attendance and marks.</li>
+          <li><strong>Revenue Forecasting:</strong> Predictive cash-flow modeling based on upcoming semester installments and arrears.</li>
+          <li><strong>Hostel & Transport Utilization:</strong> Optimizing vehicle routes and hostel rooms based on occupancy trends.</li>
+          <li><strong>Automated Board Reports:</strong> Scheduled PDF digest generation emailed weekly to University Board of Trustees.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 29 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-30">
+          <div class="slide-header">
+            <span class="pill">INFRASTRUCTURE & RESILIENCE</span>
+            <div class="slide-title">Disaster Recovery, High Availability & Enterprise SLA</div>
+            <div class="slide-subtitle">Zero single-point-of-failure infrastructure with multi-AZ replication, point-in-time recovery, and 99.95% SLA</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">High-Availability Architecture</div>
+        <div class="card-subtitle">Zero Single-Point-of-Failure</div>
+        <ul class="card-list">
+          <li><strong>Stateless NestJS Containers:</strong> API service runs in Docker containers behind an auto-scaling load balancer.</li>
+          <li><strong>Multi-AZ PostgreSQL Replication:</strong> Primary-standby database topology spanning multiple availability zones.</li>
+          <li><strong>Redis Sentinel Caching:</strong> In-memory cache with automatic master failover ensuring continuous availability.</li>
+          <li><strong>Object Storage Redundancy:</strong> S3 multi-region replication ensuring 99.999999999% durability of student files.</li>
+        </ul>
+      </div>
+      <div class="card rose">
+        <div class="card-title">Disaster Recovery & PITR</div>
+        <div class="card-subtitle">RPO < 5 Min | RTO < 15 Min</div>
+        <ul class="card-list">
+          <li><strong>Continuous WAL Archiving:</strong> Write-Ahead Log (WAL) archiving enabling Point-In-Time Recovery (PITR).</li>
+          <li><strong>Recovery Point Objective (RPO):</strong> RPO < 5 Minutes: Maximum allowable data loss in catastrophic disaster.</li>
+          <li><strong>Recovery Time Objective (RTO):</strong> RTO < 15 Minutes: Automated failover recovers full service within 15 minutes.</li>
+          <li><strong>Automated Daily Off-Site Backups:</strong> Encrypted daily database dumps transferred to isolated cold cloud storage.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">Enterprise SLA & Monitoring</div>
+        <div class="card-subtitle">99.95% SLA & 24/7 Telemetry</div>
+        <ul class="card-list">
+          <li><strong>99.95% Uptime Guarantee:</strong> Financially backed enterprise availability SLA excluding scheduled maintenance.</li>
+          <li><strong>DDoS & WAF Protection:</strong> Cloudflare enterprise web application firewall filtering malicious traffic.</li>
+          <li><strong>Real-Time APM Telemetry:</strong> Prometheus and Grafana dashboards monitoring CPU, memory, and query latencies.</li>
+          <li><strong>24/7 Incident Escalation:</strong> Automated PagerDuty alerts dispatched to on-call infrastructure engineers.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 30 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-31">
+          <div class="slide-header">
+            <span class="pill">FINANCIAL VALUE</span>
+            <div class="slide-title">Total Cost of Ownership (TCO) & Strategic ROI Analysis</div>
+            <div class="slide-subtitle">Delivering 60% lower TCO and 100% elimination of revenue leakage compared to legacy Tier-1 ERP suites</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 20%;">Evaluation Category</th>
+            <th style="width: 27%;">Legacy ERP Suites (SAP / Banner)</th>
+            <th style="width: 27%;">UniversityERP Modern Platform</th>
+            <th style="width: 26%;">Institutional Benefit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Upfront Licensing</td><td>Extremely expensive per-core / per-user license</td><td>Predictable institutional SaaS / self-hosted model</td><td>65% lower initial capital expenditure</td></tr>
+          <tr><td>Implementation Timeline</td><td>12 to 24 Months complex consulting project</td><td>30-Day automated cutover with proven DAG tools</td><td>4x faster time-to-value and deployment</td></tr>
+          <tr><td>Customization & Flexibility</td><td>Proprietary code (ABAP/PL-SQL), expensive consultants</td><td>Modern TypeScript, NestJS, React, Prisma stack</td><td>In-house team easily manages customizations</td></tr>
+          <tr><td>Revenue Leakage Elimination</td><td>Frequent leakage due to disconnected billing & cashiering</td><td>Dual-verify Razorpay gateway + double-entry ledger</td><td>100% fee recovery and zero cash leakage</td></tr>
+          <tr><td>Paper & Manual Operations</td><td>Extensive physical paperwork, paper forms, registers</td><td>100% paperless digital workflows with DLT SMS alerts</td><td>90% reduction in paper and printing costs</td></tr>
+          <tr><td>Accreditation Preparation</td><td>3 to 6 months of manual spreadsheet compilation</td><td>Real-time SSR Criteria 1-7 and OBE attainment export</td><td>Accreditation readiness at all times with zero stress</td></tr>
+        </tbody>
+      </table>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 31 of 32</div>
+          </div>
+        </div>
+        
+
+        <div class="slide" id="slide-32">
+          <div class="slide-header">
+            <span class="pill">STRATEGIC HORIZON</span>
+            <div class="slide-title">Strategic Vision, Enterprise Roadmap & Next Steps</div>
+            <div class="slide-subtitle">Empowering universities with autonomous digital operations, AI-assisted learning, and global compliance</div>
+            <div class="slide-divider"></div>
+          </div>
+          <div class="slide-body">
+            
+    <div class="grid-3">
+      <div class="card blue">
+        <div class="card-title">1. Phased Deployment Roadmap</div>
+        <div class="card-subtitle">Structured 4-Month Rollout</div>
+        <ul class="card-list">
+          <li><strong>Phase 1: Core Deployment (Month 1):</strong> Data migration, Auth, Master Structure, Admissions, Fees, and Academics.</li>
+          <li><strong>Phase 2: Academic & Exams (Month 2):</strong> Timetables, Biometric Attendance, Exam Scheduling, COE Anonymous Codes.</li>
+          <li><strong>Phase 3: Facilities & Logistics (Month 3):</strong> Hostel matrix, Fleet GPS transit, RFID Library, and Health Clinic.</li>
+          <li><strong>Phase 4: Analytics & Full Rollout (Month 4):</strong> Executive Cockpit, NAAC SSR exporter, and Alumni Network go-live.</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <div class="card-title">2. Next-Generation AI Horizons</div>
+        <div class="card-subtitle">Artificial Intelligence in Higher Ed</div>
+        <ul class="card-list">
+          <li><strong>AI Academic Advisor:</strong> Generative AI assistant recommending personalized course electives to students.</li>
+          <li><strong>Automated Timetable AI:</strong> Genetic algorithm optimization for campus-wide complex multi-track scheduling.</li>
+          <li><strong>Smart Proctoring ML:</strong> Edge-based computer vision detecting candidate gaze and suspicious movements.</li>
+          <li><strong>Conversational Helpdesk:</strong> 24/7 student service chatbot handling fee, grade, and gate-pass inquiries.</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <div class="card-title">3. Recommended Immediate Action</div>
+        <div class="card-subtitle">Path to Partnership & Go-Live</div>
+        <ul class="card-list">
+          <li><strong>Executive Demonstration:</strong> Tailored sandbox walkthrough for Chancellor, Vice-Chancellor, and Trustees.</li>
+          <li><strong>Technical Architecture Sign-Off:</strong> Enterprise IT review of database schema, API security, and network topology.</li>
+          <li><strong>Data Migration Workshop:</strong> Hands-on data mapping session utilizing the 10-level DAG templates.</li>
+          <li><strong>Formal Engagement Kick-Off:</strong> Finalizing project charter, SLA agreements, and dedicated engineering team.</li>
+        </ul>
+      </div>
+    </div>
+    
+          </div>
+          <div class="slide-footer">
+            <div>UniversityERP Platform | 20-Year Principal Enterprise Architect Blueprint</div>
+            <div>Confidential & Enterprise Architecture Specification</div>
+            <div class="f-right">Slide 32 of 32</div>
+          </div>
+        </div>
+        
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 32;
+
+    function updateView() {
+      document.querySelectorAll('.slide').forEach((s, idx) => {
+        if (idx + 1 === currentSlide) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+
+      document.getElementById('slideSelector').value = currentSlide;
+      const progress = (currentSlide / totalSlides) * 100;
+      document.getElementById('progressBar').style.width = progress + '%';
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateView();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateView();
+      }
+    }
+
+    function goToSlide(num) {
+      currentSlide = parseInt(num, 10);
+      updateView();
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown' || e.key === 'j') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'k') {
+        prevSlide();
+      } else if (e.key === 'Home') {
+        currentSlide = 1;
+        updateView();
+      } else if (e.key === 'End') {
+        currentSlide = totalSlides;
+        updateView();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      }
+    });
+
+    // Populate Slide Selector
+    document.addEventListener('DOMContentLoaded', () => {
+      const selector = document.getElementById('slideSelector');
+      const slides = document.querySelectorAll('.slide');
+      slides.forEach((slide, idx) => {
+        const titleEl = slide.querySelector('.slide-title');
+        const title = titleEl ? titleEl.innerText : 'Slide ' + (idx + 1);
+        const opt = document.createElement('option');
+        opt.value = idx + 1;
+        opt.innerText = (idx + 1) + '. ' + title;
+        selector.appendChild(opt);
+      });
+      updateView();
+    });
+  </script>
+</body>
+</html>
