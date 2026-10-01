@@ -180,3 +180,22 @@ az monitor activity-log list \
   --max-events 50 \
   -o table
 ```
+# AKS SETUP:
+```
+$sudo dnf install -y https://packages.microsoft.com/config/rhel/9/packages-microsoft-prod.rpm
+$sudo dnf install -y azure-cli
+$az version
+{
+  "azure-cli": "2.90.0",
+  "azure-cli-core": "2.90.0",
+  "azure-cli-telemetry": "1.1.0",
+  "extensions": {}
+}
+$az login --use-device-code
+To sign in, use a web browser to open the page https://login.microsoft.com/device and enter the code XYZ123ABC to authenticate.
+
+Retrieving tenants and subscriptions for the selection...
+No subscriptions found for myazureaccess@gmail.com.
+
+$az account list -o table
+```
